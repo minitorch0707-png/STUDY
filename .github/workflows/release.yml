@@ -88,18 +88,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Without an Apple Developer ID the Mac app is ad-hoc signed (see docs/RELEASING.md).
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          # Lets "Re-run failed jobs" add a missing installer to an already-published release.
+          EP_GH_IGNORE_TIME: "true"
         run: >
           npx electron-builder ${{ matrix.target }} --publish always
           -c.publish.owner=${{ github.repository_owner }}
           -c.publish.repo=${{ github.event.repository.name }}
           -c.extraMetadata.version=${{ needs.prepare.outputs.version }}
 
-  # 3. Both apps are attached: publish, so download links and updates switch to it.
+  # 3. Publish, so download links and updates switch to the new version.
+  #    If one platform failed (e.g. GitHub had no Mac machines free), the other is
+  #    still released; use "Re-run failed jobs" later to add the missing one.
   publish:
     needs: [prepare, build]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "v${{ needs.prepare.outputs.version }}" -R "${{ github.repository }}" --draft=false --latest
+        run: |
+          TAG="v${{ needs.prepare.outputs.version }}"
+          ASSETS=$(gh release view "$TAG" -R "${{ github.repository }}" --json assets --jq '[.assets[].name | select(endswith(".exe") or endswith(".dmg"))] | length')
+          if [ "$ASSETS" = "0" ]; then echo "No installers were built — not publishing."; exit 1; fi
+          gh release edit "$TAG" -R "${{ github.repository }}" --draft=false --latest

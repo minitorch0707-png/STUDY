@@ -10,6 +10,8 @@ New versions are built automatically by GitHub (free for public repositories) an
 
 (Developers can also push a tag: `git tag v0.3.0 && git push origin v0.3.0`.)
 
+**If the Mac (or Windows) build fails or gets stuck:** GitHub sometimes runs short of Mac machines. The release is still published with whichever app built. Open the run in **Actions** and click **Re-run failed jobs** later; the missing app is added to the same release.
+
 The download links in the README always point to the latest release, so they never need changing.
 
 ## How updates reach students
