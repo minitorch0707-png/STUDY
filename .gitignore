@@ -45,3 +45,6 @@ next-env.d.ts
 /data/
 /test-fixtures/out/
 tsconfig.tsbuildinfo
+
+# Local walkthrough recordings (large)
+/demo/*.webm
