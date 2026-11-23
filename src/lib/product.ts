@@ -34,7 +34,7 @@ export const PRODUCT = {
   offlineGraceDays: 30,
 
   /** GitHub repository used for update checks and download links. */
-  githubRepo: "minitorch0707-png/lecturelab",
+  githubRepo: "minitorch0707-png/study",
 } as const;
 
 /** Free plan limits and which features need Pro. Change freely. */

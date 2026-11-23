@@ -2,7 +2,7 @@
 # LectureLab one-step installer for macOS.
 #
 # Paste this into Terminal:
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/minitorch0707-png/lecturelab/main/install.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/minitorch0707-png/study/main/install.sh)"
 #
 # Most people should just download the desktop app instead (see README). This
 # script is for running LectureLab from source in the browser.
@@ -16,7 +16,7 @@
 
 set -e
 
-REPO="minitorch0707-png/lecturelab"
+REPO="minitorch0707-png/study"
 NODE_VERSION="v22.23.5"
 HOME_DIR="${LECTURELAB_HOME:-$HOME/LectureLab}"
 APP="$HOME_DIR/app"

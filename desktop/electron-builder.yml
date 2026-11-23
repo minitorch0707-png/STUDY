@@ -55,5 +55,5 @@ linux:
 publish:
   - provider: github
     owner: minitorch0707-png
-    repo: lecturelab
+    repo: study
     releaseType: release

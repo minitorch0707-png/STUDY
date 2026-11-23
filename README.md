@@ -6,7 +6,7 @@
 
 A free desktop app for Mac and Windows. The AI runs on *your* computer: no subscription, no account, and your course files never leave your laptop.
 
-### [⬇ Download for Mac](https://github.com/minitorch0707-png/lecturelab/releases/latest/download/LectureLab-Mac.dmg) &nbsp;·&nbsp; [⬇ Download for Windows](https://github.com/minitorch0707-png/lecturelab/releases/latest/download/LectureLab-Windows-Setup.exe)
+### [⬇ Download for Mac](https://github.com/minitorch0707-png/study/releases/latest/download/LectureLab-Mac.dmg) &nbsp;·&nbsp; [⬇ Download for Windows](https://github.com/minitorch0707-png/study/releases/latest/download/LectureLab-Windows-Setup.exe)
 
 <sub>Mac: Apple Silicon (M1 or newer) · Windows 10/11 (64-bit) · 8 GB memory minimum, 16 GB recommended · ~6 GB free space</sub>
 
@@ -55,7 +55,7 @@ Your files, quizzes and progress are stored only on your computer, and the AI ru
 
 LectureLab is **early (alpha)**: useful today and improving quickly. Scanned PDFs (photos of pages) can't be read yet. Answers come from a small local AI, so check the slide citations.
 
-Found a problem? In the app, open **Settings → Help & diagnostics → Copy diagnostics**, then [open an issue](https://github.com/minitorch0707-png/lecturelab/issues/new/choose) and paste it in.
+Found a problem? In the app, open **Settings → Help & diagnostics → Copy diagnostics**, then [open an issue](https://github.com/minitorch0707-png/study/issues/new/choose) and paste it in.
 
 ---
 

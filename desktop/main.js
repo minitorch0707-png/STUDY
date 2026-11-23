@@ -15,7 +15,7 @@ const fs = require("node:fs");
 const net = require("node:net");
 const path = require("node:path");
 
-const REPO = "minitorch0707-png/lecturelab";
+const REPO = "minitorch0707-png/study";
 const PREFERRED_PORT = 47321;
 const isDev = !app.isPackaged;
 
