@@ -8,7 +8,7 @@ import { toBlob } from "@/lib/rag/vector";
 import { invalidateRetrievalCache } from "@/lib/rag/retrieve";
 import { chunkText } from "@/lib/ingest/chunk";
 import { guessMetadata, parseDocument, validateUpload } from "@/lib/ingest/parse";
-import type { ParsedSection, SupportedExt } from "@/lib/ingest/types";
+import { FriendlyError, type ParsedSection, type SupportedExt } from "@/lib/ingest/types";
 import { detectDates, looksLikeSyllabus } from "@/lib/learning/syllabus";
 import { getSettings } from "@/lib/settings";
 import { runInBackground } from "./generations";
@@ -126,6 +126,30 @@ export function addUpload(courseId: string, filename: string, buf: Buffer, repla
   return { ok: true, document: getDocument(id)! };
 }
 
+/** Photos and screenshots of notes/slides are transcribed by the vision model. */
+async function readImage(buf: Buffer, name: string): Promise<string> {
+  const s = getSettings();
+  const st = await getStatus();
+  if (!s.visionModel || !st.reachable || !st.visionModel?.installed) {
+    throw new FriendlyError(
+      "Reading photos needs the free image reader. Go to Settings → AI Models, install “gemma3:4b” and choose “Use as vision model”, then use Re-analyse on this file.",
+    );
+  }
+  const res = await getLLM().chat({
+    model: s.visionModel,
+    temperature: 0.1,
+    maxTokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `This image ("${name}") is a student's course material: a slide, handout, whiteboard or handwritten notes. Transcribe ALL the text exactly, in reading order, using markdown (headings, bullet points, tables). Then, if there are diagrams or charts, add a short "Diagram:" description of each. Don't add anything that isn't in the image.`,
+        images: [buf.toString("base64")],
+      },
+    ],
+  });
+  return res.text.trim();
+}
+
 async function describeImages(sections: ParsedSection[], warnings: string[]) {
   const s = getSettings();
   if (!s.describeImages || !s.visionModel) return new Map<number, string>();
@@ -175,6 +199,11 @@ export async function processDocument(id: string) {
     const s = getSettings();
     const parsed = await parseDocument(doc.ext, buf, { withImages: s.describeImages && Boolean(s.visionModel) });
     warnings.push(...parsed.warnings);
+    if (doc.ext === "image") {
+      setStatus(id, "parsing", "Reading the photo with the image reader…", 0.2);
+      const text = await readImage(buf, doc.display_name);
+      parsed.sections[0] = { label: "Image", title: doc.display_name, content: text, hasText: Boolean(text.trim()), images: [] };
+    }
     if (!parsed.sections.some((s) => s.hasText)) {
       db().prepare("UPDATE documents SET warnings = ? WHERE id = ?").run(JSON.stringify(warnings), id);
       setStatus(id, "failed", "No readable text found in this file.", 1);
@@ -247,7 +276,7 @@ export async function processDocument(id: string) {
     console.error("ingest failed", e);
     logEvent("error", "ingest", `${doc.ext} file (${doc.size} bytes) failed: ${(e as Error).message}\n${((e as Error).stack ?? "").split("\n").slice(1, 4).join("\n")}`);
     db().prepare("UPDATE documents SET warnings = ? WHERE id = ?").run(JSON.stringify(warnings), id);
-    setStatus(id, "failed", `Processing failed: ${(e as Error).message}`.slice(0, 500), 1);
+    setStatus(id, "failed", (e instanceof FriendlyError ? (e as Error).message : `Processing failed: ${(e as Error).message}`).slice(0, 500), 1);
   }
 }
 
@@ -268,6 +297,8 @@ export function importDetectedDates(courseId: string, documentId: string, text: 
 export async function reanalyzeDocument(id: string) {
   const doc = getDocument(id);
   if (!doc) return;
+  // Files that never produced text (e.g. a photo before the image reader was installed) are processed from scratch.
+  if (doc.status === "failed" || doc.section_count === 0 || doc.ext === "image") return processDocument(id);
   try {
     const st = await getStatus();
     const missing = db()

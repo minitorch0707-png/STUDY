@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowLeft, Download, ExternalLink, ImageIcon, MessageSqu
 import { Badge, Button, Card, ErrorNote, InfoNote, Skeleton, cn } from "@/components/ui";
 import { Markdown } from "@/components/learning";
 import { useApi } from "@/lib/client";
+import { unitName } from "@/lib/formats";
 
 interface Section {
   id: string;
@@ -53,7 +54,7 @@ function Viewer() {
           </Link>
           <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight">{doc.display_name}</h1>
           <p className="text-sm text-muted">
-            {sections.length} {doc.ext === "pptx" ? "slides" : isPdf ? "pages" : "sections"} · extracted text
+            {sections.length} {unitName(doc.ext, sections.length)} · extracted text
           </p>
         </div>
         <div className="flex gap-2">
@@ -68,6 +69,10 @@ function Viewer() {
         </div>
       </div>
 
+      {doc.ext === "image" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={fileUrl} alt={doc.display_name} className="mb-5 max-h-[60vh] w-auto rounded-2xl border border-border bg-white object-contain shadow-card" />
+      )}
       {doc.warnings.length > 0 && (
         <InfoNote tone="warning" icon={<AlertTriangle className="size-4" />} className="mb-5">
           <ul className="space-y-0.5">
@@ -110,7 +115,7 @@ function Viewer() {
               {s.has_text ? (
                 s.content ? <Markdown text={s.content} /> : <p className="text-sm text-muted">Title only.</p>
               ) : (
-                <p className="text-sm italic text-muted">No readable text on this {doc.ext === "pptx" ? "slide" : "page"} — it may be an image, diagram or scan.</p>
+                <p className="text-sm italic text-muted">No readable text on this {unitName(doc.ext, 1)} — it may be an image, diagram or scan.</p>
               )}
               {s.notes && (
                 <div className="mt-4 rounded-xl bg-surface-2 px-4 py-3 text-sm">

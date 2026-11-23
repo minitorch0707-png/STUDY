@@ -51,10 +51,10 @@ describe("uploads students actually have", () => {
     big[1] = 0x4b;
     expect(validateUpload("lecture.pptx", big).ok).toBe(true);
   });
-  it("explains how to convert old PowerPoint and Keynote files", () => {
+  it("rejects damaged files and explains how to convert Keynote files", () => {
     const r = validateUpload("Week 1.ppt", Buffer.from("x"));
     expect(r.ok).toBe(false);
-    expect(!r.ok && r.error).toMatch(/Save As .*\.pptx/);
+    expect(!r.ok && r.error).toMatch(/doesn't look like a real PowerPoint/);
     const k = validateUpload("Week 1.key", Buffer.from("x"));
     expect(!k.ok && k.error).toMatch(/Export To/);
   });

@@ -2,7 +2,11 @@ import { parseDocx } from "./parsers/docx";
 import { parsePdf } from "./parsers/pdf";
 import { parsePptx } from "./parsers/pptx";
 import { parseText } from "./parsers/text";
-import { MAX_UPLOAD_BYTES, SUPPORTED_EXTENSIONS, type ParseOptions, type ParsedDocument, type SupportedExt } from "./types";
+import { parsePpt } from "./parsers/ppt";
+import { parseCsv, parseDoc, parseEpub, parseHtml, parseOdf, parseRtf } from "./parsers/more";
+import { EXTENSION_ALIASES, MAX_UPLOAD_BYTES, type ParseOptions, type ParsedDocument, type SupportedExt } from "./types";
+
+const OLE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
 
 export function extensionOf(filename: string): string {
   return (filename.split(".").pop() ?? "").toLowerCase();
@@ -15,41 +19,58 @@ export function extensionOf(filename: string): string {
 export function validateUpload(filename: string, buf: Buffer): { ok: true; ext: SupportedExt } | { ok: false; error: string } {
   const ext = extensionOf(filename);
   const resave: Record<string, string> = {
-    ppt: "an old PowerPoint file (.ppt). Open it in PowerPoint or Keynote and choose File → Save As / Export → .pptx, then upload that",
-    doc: "an old Word file (.doc). Open it in Word or Pages and save it as .docx, then upload that",
     key: "a Keynote file. In Keynote choose File → Export To → PowerPoint (or PDF), then upload that",
     pages: "a Pages file. In Pages choose File → Export To → Word (or PDF), then upload that",
-    odp: "an OpenDocument presentation. Save it as .pptx or PDF, then upload that",
+    numbers: "a Numbers file. In Numbers choose File → Export To → CSV, then upload that",
     gslides: "only a Google Slides shortcut, not the slides themselves. In Google Slides choose File → Download → Microsoft PowerPoint (.pptx), then upload that",
     gdoc: "only a Google Docs shortcut. In Google Docs choose File → Download → Microsoft Word (.docx), then upload that",
+    gsheet: "only a Google Sheets shortcut. In Google Sheets choose File → Download → CSV, then upload that",
     zip: "a zip file. Unzip it first, then upload the files inside",
+    heic: "an iPhone photo (HEIC). Open it in Photos/Preview and export it as JPEG, then upload that",
+    xlsx: "a spreadsheet. Save or export it as CSV, then upload that",
+    xls: "a spreadsheet. Save or export it as CSV, then upload that",
+    mp4: "a video. LectureLab reads slides and documents, not video yet",
+    mov: "a video. LectureLab reads slides and documents, not video yet",
+    mp3: "an audio file. LectureLab can't transcribe audio yet",
+    m4a: "an audio file. LectureLab can't transcribe audio yet",
   };
   if (resave[ext]) return { ok: false, error: `"${filename}" is ${resave[ext]}.` };
-  if (!(SUPPORTED_EXTENSIONS as readonly string[]).includes(ext)) {
-    return { ok: false, error: `"${filename}" isn't supported. Upload PDF, PowerPoint (.pptx), Word (.docx), or text (.txt, .md) files.` };
+  const kind = EXTENSION_ALIASES[ext];
+  if (!kind) {
+    return { ok: false, error: `"${filename}" isn't a file type LectureLab can read yet. Try PDF, PowerPoint, Word, text, web pages, e-books or photos.` };
   }
   if (buf.length === 0) return { ok: false, error: `"${filename}" is empty.` };
   if (buf.length > MAX_UPLOAD_BYTES) {
-    return { ok: false, error: `"${filename}" is larger than ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` };
+    return { ok: false, error: `"${filename}" is larger than ${MAX_UPLOAD_BYTES / 1024 / 1024} MB. Try exporting it as PDF.` };
   }
-  const head = buf.subarray(0, 8);
-  if (ext === "pdf" && !head.subarray(0, 5).equals(Buffer.from("%PDF-"))) {
-    return { ok: false, error: `"${filename}" doesn't look like a real PDF file.` };
+  const head = buf.subarray(0, 12);
+  const isZip = head[0] === 0x50 && head[1] === 0x4b;
+  const bad = (what: string) => ({ ok: false as const, error: `"${filename}" doesn't look like a real ${what} file. It may be damaged, or renamed from another type.` });
+  if (kind === "pdf" && buf.indexOf("%PDF-") === -1) return bad("PDF");
+  if ((kind === "pptx" || kind === "docx" || kind === "odp" || kind === "odt" || kind === "epub") && !isZip) {
+    if ((kind === "pptx" || kind === "docx") && head.subarray(0, 8).equals(OLE)) {
+      // An old-format file with a new-format name (common after renaming). Read it as the old format.
+      return { ok: true, ext: kind === "pptx" ? "ppt" : "doc" };
+    }
+    return bad(kind.toUpperCase());
   }
-  if ((ext === "pptx" || ext === "docx") && !(head[0] === 0x50 && head[1] === 0x4b)) {
-    return {
-      ok: false,
-      error: `"${filename}" isn't a valid ${ext.toUpperCase()} file. Older .ppt/.doc files must be re-saved as .pptx/.docx.`,
-    };
+  if ((kind === "ppt" || kind === "doc") && !head.subarray(0, 8).equals(OLE)) {
+    if (isZip) return { ok: true, ext: kind === "ppt" ? "pptx" : "docx" }; // new format, old name
+    return bad(kind === "ppt" ? "PowerPoint" : "Word");
   }
-  if (ext === "txt" || ext === "md") {
+  if (kind === "rtf" && !buf.subarray(0, 5).toString("latin1").startsWith("{\\rtf")) return bad("RTF");
+  if (kind === "image") {
+    const png = head[0] === 0x89 && head[1] === 0x50;
+    const jpg = head[0] === 0xff && head[1] === 0xd8;
+    const webp = head.subarray(0, 4).toString("latin1") === "RIFF" && head.subarray(8, 12).toString("latin1") === "WEBP";
+    if (!png && !jpg && !webp) return bad("image");
+  }
+  if (["txt", "md", "html", "csv", "tsv"].includes(kind)) {
     // Reject binary data disguised as text.
     const sample = buf.subarray(0, 4096);
-    let ctrl = 0;
-    for (const b of sample) if (b === 0 || (b < 9 && b !== 0)) ctrl++;
-    if (ctrl > 0) return { ok: false, error: `"${filename}" contains binary data, not text.` };
+    for (const b of sample) if (b === 0 || (b < 9 && b !== 0)) return { ok: false, error: `"${filename}" contains binary data, not text.` };
   }
-  return { ok: true, ext: ext as SupportedExt };
+  return { ok: true, ext: kind };
 }
 
 export async function parseDocument(ext: SupportedExt, buf: Buffer, opts: ParseOptions = {}): Promise<ParsedDocument> {
@@ -58,11 +79,30 @@ export async function parseDocument(ext: SupportedExt, buf: Buffer, opts: ParseO
       return parsePdf(buf);
     case "pptx":
       return parsePptx(buf, opts);
+    case "ppt":
+      return parsePpt(buf);
     case "docx":
       return parseDocx(buf);
+    case "doc":
+      return parseDoc(buf);
+    case "odp":
+    case "odt":
+      return parseOdf(buf, ext);
+    case "rtf":
+      return parseRtf(buf);
+    case "html":
+      return parseHtml(buf);
+    case "epub":
+      return parseEpub(buf);
+    case "csv":
+    case "tsv":
+      return parseCsv(buf, ext === "csv" ? "," : "\t");
     case "txt":
     case "md":
       return parseText(buf);
+    case "image":
+      // Photos are read by the vision model during processing (see documents.ts).
+      return { sections: [{ label: "Image", title: null, content: "", hasText: false, images: [{ name: "image", mime: "image/*", data: buf }] }], warnings: [] };
   }
 }
 

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   },
   // Native / heavy server-only libraries are loaded straight from node_modules
   // instead of being bundled.
-  serverExternalPackages: ["better-sqlite3", "unpdf", "mammoth", "jszip"],
+  serverExternalPackages: ["better-sqlite3", "unpdf", "mammoth", "jszip", "cfb", "word-extractor"],
   turbopack: {
     rules: {
       "*.css": {

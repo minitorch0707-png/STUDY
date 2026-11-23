@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { CloudUpload, FileWarning } from "lucide-react";
 import { cn, ProgressBar } from "./ui";
 import { formatBytes } from "@/lib/client";
+import { FORMAT_SUMMARY } from "@/lib/ingest/types";
 
 const MAX = 250 * 1024 * 1024;
 
@@ -24,22 +25,8 @@ export function Uploader({ courseId, onUploaded, compact }: { courseId: string; 
 
   const upload = (files: File[]) => {
     const errs: string[] = [];
+    // The server checks file types (and explains how to convert unusual ones); here we only catch huge files early.
     const ok = files.filter((f) => {
-      const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
-      if (!["pdf", "pptx", "docx", "txt", "md"].includes(ext)) {
-        const hint: Record<string, string> = {
-          ppt: "old PowerPoint format — open it in PowerPoint or Keynote and Save As .pptx",
-          doc: "old Word format — open it and Save As .docx",
-          key: "Keynote file — in Keynote use File → Export To → PowerPoint",
-          pages: "Pages file — use File → Export To → Word or PDF",
-          gslides: "this is only a Google Slides shortcut — in Google Slides use File → Download → Microsoft PowerPoint (.pptx)",
-          gdoc: "this is only a Google Docs shortcut — in Google Docs use File → Download → Microsoft Word (.docx)",
-          odp: "OpenDocument file — save it as .pptx or PDF",
-          zip: "this is a zip file — unzip it first, then upload the files inside",
-        };
-        errs.push(`${f.name}: ${hint[ext] ?? "unsupported file type (use PDF, .pptx, .docx, .txt or .md)"}`);
-        return false;
-      }
       if (f.size > MAX) {
         errs.push(`${f.name}: larger than 250 MB — try exporting it as PDF`);
         return false;
@@ -106,7 +93,7 @@ export function Uploader({ courseId, onUploaded, compact }: { courseId: string; 
           {drag ? "Drop to upload" : "Drag files here, or "}
           {!drag && <span className="text-primary-text underline underline-offset-2">browse</span>}
         </p>
-        <p className="mt-1 text-xs text-muted">PDF, PowerPoint (.pptx), Word (.docx), text or markdown · up to 250 MB each</p>
+        <p className="mt-1 text-xs text-muted">{FORMAT_SUMMARY} · up to 250 MB each</p>
       </label>
       {/* No "accept" filter: every file stays selectable, so unsupported ones get a helpful message instead of being greyed out. */}
       <input
