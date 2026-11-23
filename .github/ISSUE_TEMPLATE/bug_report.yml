@@ -1,0 +1,33 @@
+name: 🐛 Something doesn't work
+description: A file won't upload, a page breaks, or the AI misbehaves.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, and what did you expect instead?
+      placeholder: I uploaded my Week 2 slides and it said "Processing failed"…
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: Copy any red error text from the page, or from the Terminal window that runs LectureLab.
+      render: text
+  - type: dropdown
+    id: file
+    attributes:
+      label: If it's about a file, what type was it?
+      options: [Not about a file, PowerPoint (.pptx), Old PowerPoint (.ppt), PDF, Word (.docx), Keynote, Other]
+  - type: input
+    id: computer
+    attributes:
+      label: Computer
+      placeholder: MacBook Air M4, 16 GB, macOS 15
+  - type: input
+    id: model
+    attributes:
+      label: AI model (Settings → AI Models)
+      placeholder: qwen3:4b

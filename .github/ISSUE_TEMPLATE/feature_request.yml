@@ -1,0 +1,16 @@
+name: 💡 Idea or feature request
+description: Suggest something that would help you study.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the studying problem, not just the solution.
+      placeholder: Before exams I want to…
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea

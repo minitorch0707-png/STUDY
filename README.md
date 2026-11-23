@@ -1,54 +1,104 @@
-# LectureLab
+<div align="center">
 
-LectureLab turns your lecture slides, readings and syllabi into structured lessons, practice exams, flashcards and a study plan. Its AI tutor runs **on your own computer** using free, open-weight models, so you pay nothing for AI and your course files stay on your machine.
+# 🎓 LectureLab
 
-- **Courses & uploads**: drag in PDF, PowerPoint (.pptx), Word (.docx), text or markdown files. LectureLab reads them page by page or slide by slide and keeps headings, tables and speaker notes.
-- **AI Tutor**: structured lessons, quick actions ("Explain simpler", "Quiz me", …), Socratic mode, and teaching that adapts when you struggle. Every claim links to the exact slide or page it came from.
-- **Practice exams**: multiple choice, true/false, short answer, essay, definitions, scenarios and matching. Objective answers are graded instantly; written answers are graded against a visible rubric, and "Retake my mistakes" builds a new quiz on what you got wrong.
-- **Flashcards** with spaced repetition (Again / Hard / Good / Easy) and keyboard shortcuts.
-- **Study planner**: exam dates detected from your syllabus (you confirm them), day-by-day plans and an Exam Cram mode.
-- **Progress**: mastery per topic, calculated only from your real answers.
+**Turn your lecture slides into a private AI tutor, practice exams and flashcards.**
 
-## Install on your Mac (one step)
+Runs on your own laptop with free, open-weight AI models. No subscriptions, and your course files never leave your computer.
+
+![LectureLab AI tutor teaching from lecture slides](docs/screenshots/ai-tutor-lesson.png)
+
+</div>
+
+---
+
+## What it does
+
+Upload your course files (PDF, PowerPoint, Word, notes). LectureLab reads them and gives you:
+
+| | |
+|---|---|
+| 🧑‍🏫 **AI Tutor**: lessons built from *your* slides. Every claim links back to the exact slide or page. Ask follow-ups, or hit *Explain simpler*, *Give me an example* or *Quiz me*. | ![Tutor](docs/screenshots/source-slide.png) |
+| 📝 **Practice exams**: multiple choice, true/false, short answer, essays and more. Written answers are graded against a clear rubric that shows what you missed. | ![Exam feedback](docs/screenshots/exam-written-feedback.png) |
+| 🃏 **Flashcards**: generated from your material, with spaced repetition so cards come back just before you'd forget them. | ![Flashcard](docs/screenshots/flashcard.png) |
+| 📅 **Study planner**: finds exam dates in your syllabus, then builds a day-by-day plan focused on your weakest topics. | ![Planner](docs/screenshots/study-plan.png) |
+| 📈 **Progress**: strengths and weaknesses per topic, based only on your real answers. | ![Progress](docs/screenshots/progress.png) |
+
+## Install (Mac)
 
 1. Open **Terminal**: press `⌘ Command` + `Space`, type `Terminal`, press `Return`.
-2. Copy this line, paste it into Terminal, and press `Return`:
+2. Paste this line and press `Return`:
 
    ```bash
    bash -c "$(curl -fsSL https://raw.githubusercontent.com/minitorch0707-png/study/main/install.sh)"
    ```
 
-3. Wait. It installs everything (Node.js, LectureLab, the Ollama AI app and the AI models, about 3 GB in total) and opens LectureLab in your browser when it's finished. The model download is the slowest part (usually 5–15 minutes). If Ollama shows a welcome window, click through it.
+3. Wait 5–20 minutes. Most of that time is downloading the ~3 GB AI model. LectureLab opens in your browser when it's ready.
 
-After that, **double-click `LectureLab` on your Desktop** whenever you want to study. Keep the Terminal window it opens running while you use the app; close it to stop.
-
-- To **update**, run the same line again. Your courses and progress are kept.
-- Everything goes into a `LectureLab` folder in your home folder. Your data is in `~/LectureLab/data`.
-- No admin password is needed. The only thing installed outside that folder is the Ollama app (into Applications).
+From then on, **double-click `LectureLab` on your Desktop** to start it. To update, run the same line again (your courses are kept).
 
 <details>
-<summary>Manual setup (for developers)</summary>
+<summary>Requirements and manual setup</summary>
 
-Install Node.js 22+ and Ollama, then run `ollama pull qwen3:4b`, `ollama pull nomic-embed-text`, `npm install`, `npm run build && npm start`, and open http://127.0.0.1:3000. Use `npm run dev` for live reload.
+- A Mac with Apple Silicon (M1 or newer) and 8 GB+ of memory. 16 GB is recommended.
+- About 5 GB of free disk space.
+- Manual setup for developers: install [Node.js 22+](https://nodejs.org) and [Ollama](https://ollama.com), then run:
 
+  ```bash
+  ollama pull qwen3:4b && ollama pull nomic-embed-text
+  ```
+
+  ```bash
+  npm install && npm run build && npm start
+  ```
+
+  Then open http://127.0.0.1:3000.
 </details>
 
-### Optional: YouTube videos
+## Project status
 
-Paste a free YouTube Data API v3 key in **Settings → YouTube videos** (the page explains how to get one), or put `YOUTUBE_API_KEY=...` in `.env.local`. Wikipedia explainers work without a key.
+LectureLab is an **early version (alpha)**. It's useful today, and rough in places.
 
-## Where your data lives
+| Works well | Known limitations |
+|---|---|
+| PDF, PowerPoint (.pptx), Word (.docx), text and markdown files | Old `.ppt`/`.doc` and Keynote files must be re-saved as `.pptx`/`.docx` first |
+| Lessons, quizzes, flashcards, planner and progress | Scanned PDFs (photos of pages) can't be read yet |
+| Works offline. Keyword search and syllabus dates work even without AI | Answer quality depends on the small local model, so check the citations |
+| | Mac only for the one-step installer. Windows and Linux need the manual setup |
 
-Everything is stored in one folder: `~/LectureLab/data` with the one-step installer, or `data/` in the project folder for a manual setup. It holds the `lecturelab.db` database and `uploads/`. To back up, copy that folder. To start fresh, delete it. The app only listens on `127.0.0.1`, so other devices on your Wi-Fi can't open it.
+Found a bug? [Open an issue](../../issues/new/choose) and include the error message.
 
-## For developers
+## How it works (in one picture)
 
-```bash
-npm test
+```
+ Your files ──► Reader ──► slides/pages ──► Search index ──┐
+ (PDF, PPTX, DOCX)        (keeps order,                     │  the most relevant slides
+                           tables, notes)                   ▼
+                                               Local AI model (Ollama + Qwen3)
+                                                            │
+                         lessons · quizzes · flashcards ◄───┘  every answer cites [slide #]
 ```
 
-```bash
-npm run typecheck && npm run lint
-```
+The AI never "learns" your files and is never retrained. Each time, LectureLab finds the most relevant slides and gives them to the model to read (a method called *retrieval-augmented generation*). That's why answers can cite the exact slide they came from.
 
-The tests cover parsing, retrieval, spaced repetition, mastery, grading, syllabus detection, the planner and the full backend flow (using a scripted test model). Architecture, database design, the retrieval approach, the roadmap and the plan for a public launch are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+## Project map
+
+| Folder | What's inside |
+|---|---|
+| [`src/app`](src/app) | The pages you see (dashboard, tutor, exams…) and the server API (`src/app/api`) |
+| [`src/components`](src/components) | Reusable UI pieces: buttons, cards, the uploader, the sidebar |
+| [`src/lib/ingest`](src/lib/ingest) | Reads PDF, PowerPoint and Word files and splits them into slides/pages |
+| [`src/lib/rag`](src/lib/rag) | Search over your materials (keyword + meaning) |
+| [`src/lib/ai`](src/lib/ai) | Talks to the AI model. **All prompts are in [`prompts.ts`](src/lib/ai/prompts.ts)** |
+| [`src/lib/learning`](src/lib/learning) | Flashcard scheduling, mastery scores, grading and the study planner (plain logic, no AI) |
+| [`src/lib/services`](src/lib/services) | The features themselves, connecting everything above |
+| [`tests`](tests) | Automated tests (`npm test`) |
+| [`docs`](docs) | [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Business plan](docs/BUSINESS.md) |
+
+## Contributing
+
+Contributions are welcome! Start with **[CONTRIBUTING.md](CONTRIBUTING.md)**. It explains how to run the project, where to make changes, and how to check your work.
+
+## Privacy
+
+Everything (files, quizzes, progress) is stored in `~/LectureLab/data` on your computer. The AI runs locally. The only things sent over the internet are topic names, when you ask for YouTube or Wikipedia suggestions.

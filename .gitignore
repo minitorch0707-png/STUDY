@@ -47,4 +47,4 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 
 # Local walkthrough recordings (large)
-/demo/*.webm
+/demo/
