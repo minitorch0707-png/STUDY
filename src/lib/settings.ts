@@ -18,6 +18,12 @@ export interface AppSettings {
   thinking: boolean;          // Qwen3 "thinking" mode for tutor answers (slower, sometimes better)
   youtubeApiKey: string;
   describeImages: boolean;    // run the vision model over slide images during upload
+  setupComplete: boolean;     // first-run setup finished (or skipped)
+  licenseKey: string;         // Pro licence key (secret)
+  licenseInstanceId: string;  // activation id from the licence provider
+  licenseStatus: "none" | "active" | "invalid";
+  licenseCheckedAt: string;   // ISO time of the last successful online check
+  licenseEmail: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -33,9 +39,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   thinking: false,
   youtubeApiKey: "",
   describeImages: false,
+  setupComplete: false,
+  licenseKey: "",
+  licenseInstanceId: "",
+  licenseStatus: "none",
+  licenseCheckedAt: "",
+  licenseEmail: "",
 };
 
-const SECRET_KEYS: (keyof AppSettings)[] = ["openaiApiKey", "youtubeApiKey"];
+const SECRET_KEYS: (keyof AppSettings)[] = ["openaiApiKey", "youtubeApiKey", "licenseKey", "licenseInstanceId"];
 
 export function getSettings(): AppSettings {
   const rows = db().prepare("SELECT key, value FROM settings").all() as { key: string; value: string }[];
@@ -49,6 +61,9 @@ export function getSettings(): AppSettings {
   }
   const s = { ...DEFAULT_SETTINGS, ...stored };
   if (!s.youtubeApiKey && process.env.YOUTUBE_API_KEY) s.youtubeApiKey = process.env.YOUTUBE_API_KEY;
+  // Use LectureLab's own (managed) AI engine when it's running and the student hasn't chosen another address.
+  const managed = (globalThis as { __llManagedUrl?: string | null }).__llManagedUrl;
+  if (managed && s.ollamaUrl === DEFAULT_SETTINGS.ollamaUrl) s.ollamaUrl = managed;
   return s;
 }
 

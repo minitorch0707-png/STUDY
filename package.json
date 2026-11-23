@@ -1,14 +1,17 @@
 {
   "name": "lecturelab",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -H 127.0.0.1",
     "build": "next build",
     "start": "next start -H 127.0.0.1",
-    "lint": "eslint",
+    "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "desktop:start": "npm run desktop:prepare && npm start --prefix desktop",
+    "desktop:dist": "npm run desktop:prepare && npm run dist --prefix desktop"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

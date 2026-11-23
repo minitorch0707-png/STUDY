@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/shell";
 import { ToastProvider } from "@/components/overlay";
+import { UpgradeDialog } from "@/components/pro";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin"] });
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full font-sans">
         <ToastProvider>
           <AppShell>{children}</AppShell>
+          <UpgradeDialog />
         </ToastProvider>
       </body>
     </html>

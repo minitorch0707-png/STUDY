@@ -7,6 +7,7 @@ import { chunksByIds, formatSources, retrieve, type RetrievedChunk } from "@/lib
 import { fingerprint, gradeObjective, isWritten, maxScoreFor, scoreRubric, seededShuffle, similarity, type QuestionData, type RubricVerdict } from "@/lib/learning/grading";
 import { logGeneration, runInBackground } from "./generations";
 import { getTopic, recordEvent, topicMastery, topicSectionIds } from "./topics";
+import { isPro } from "@/lib/license";
 
 export const quizConfigSchema = z.object({
   courseId: z.string(),
@@ -312,6 +313,11 @@ export async function gradeResponse(attemptId: string, questionId: string) {
   const text = typeof answer === "string" ? answer.trim() : "";
   if (!text) {
     upd.run(0, "graded", JSON.stringify({ points: (data.rubric ?? []).map(() => ({ met: "no", comment: "No answer given." })), missing: data.rubric?.map((p) => p.point) ?? [], feedback: "No answer was given." }), "auto", attemptId, questionId);
+    return;
+  }
+  if (!isPro()) {
+    // Free plan: the student marks their own written answers against the rubric.
+    upd.run(null, "needs_self_grade", null, null, attemptId, questionId);
     return;
   }
   try {

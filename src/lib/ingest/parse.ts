@@ -20,6 +20,9 @@ export function validateUpload(filename: string, buf: Buffer): { ok: true; ext: 
     key: "a Keynote file. In Keynote choose File → Export To → PowerPoint (or PDF), then upload that",
     pages: "a Pages file. In Pages choose File → Export To → Word (or PDF), then upload that",
     odp: "an OpenDocument presentation. Save it as .pptx or PDF, then upload that",
+    gslides: "only a Google Slides shortcut, not the slides themselves. In Google Slides choose File → Download → Microsoft PowerPoint (.pptx), then upload that",
+    gdoc: "only a Google Docs shortcut. In Google Docs choose File → Download → Microsoft Word (.docx), then upload that",
+    zip: "a zip file. Unzip it first, then upload the files inside",
   };
   if (resave[ext]) return { ok: false, error: `"${filename}" is ${resave[ext]}.` };
   if (!(SUPPORTED_EXTENSIONS as readonly string[]).includes(ext)) {

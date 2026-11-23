@@ -5,6 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, GraduationCap, PlugZap, Timer } from "lucide-react";
 import { Button, Card, ErrorNote, Field, InfoNote, Input, PageHeader, Select, cn } from "@/components/ui";
 import { MasteryBadge, type Mastery } from "@/components/learning";
+import { ProBadge, useLicense } from "@/components/pro";
 import { api, useApi } from "@/lib/client";
 
 const TYPES = [
@@ -23,6 +24,8 @@ function NewExamInner() {
   const { data: courses } = useApi<{ id: string; title: string; topic_count: number }[]>("/api/courses");
   const { data: status } = useApi<{ reachable: boolean; chatModel: { installed: boolean; name: string }; error?: string }>("/api/status");
   const [courseId, setCourseId] = useState(params.get("course") ?? "");
+  const { data: lic } = useLicense();
+  const needsPro = Boolean(lic?.enabled && !lic.pro);
   const { data: course } = useApi<{ topics: { id: string; title: string; importance: number; mastery: Mastery }[]; syllabusFormats: string[] }>(courseId ? `/api/courses/${courseId}` : null);
 
   const [topicIds, setTopicIds] = useState<string[]>(params.get("topic") ? [params.get("topic")!] : []);
@@ -152,7 +155,9 @@ function NewExamInner() {
               <button key={m.id} onClick={() => setMode(m.id)} className={cn("flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors", mode === m.id ? "border-primary bg-primary-soft" : "border-border hover:bg-surface-2")} aria-pressed={mode === m.id}>
                 <m.icon className={cn("mt-0.5 size-4", mode === m.id ? "text-primary-text" : "text-muted")} />
                 <div>
-                  <div className="text-sm font-medium">{m.title}</div>
+                  <div className="flex items-center gap-1.5 text-sm font-medium">
+                    {m.title} <ProBadge show={m.id === "exam" && needsPro} />
+                  </div>
                   <div className="text-xs text-muted">{m.body}</div>
                 </div>
               </button>
@@ -164,7 +169,7 @@ function NewExamInner() {
             )}
             <label className="flex items-center gap-2.5 text-sm">
               <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} className="size-4 accent-[var(--primary)]" />
-              <Timer className="size-4 text-muted" /> Timed
+              <Timer className="size-4 text-muted" /> Timed <ProBadge show={needsPro} />
             </label>
             {timed && (
               <div className="flex items-center gap-2">

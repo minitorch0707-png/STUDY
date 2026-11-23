@@ -5,9 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** Browser-side helpers: JSON fetch, polling hook, NDJSON stream reader. */
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public aiUnavailable = false) {
+  constructor(message: string, public status: number, public aiUnavailable = false, public needsPro = false) {
     super(message);
   }
+}
+
+/** Ask the app to show the "Unlock Pro" dialog (listened to by <UpgradeDialog/>). */
+export function openUpgrade(reason?: string) {
+  window.dispatchEvent(new CustomEvent("ll-needs-pro", { detail: reason }));
 }
 
 export async function api<T = unknown>(url: string, init?: RequestInit & { json?: unknown }): Promise<T> {
@@ -18,7 +23,11 @@ export async function api<T = unknown>(url: string, init?: RequestInit & { json?
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError((data as { error?: string }).error ?? `Request failed (${res.status})`, res.status, Boolean((data as { aiUnavailable?: boolean }).aiUnavailable));
+  if (!res.ok) {
+    const d = data as { error?: string; aiUnavailable?: boolean; needsPro?: boolean };
+    if (d.needsPro && typeof window !== "undefined") openUpgrade(d.error);
+    throw new ApiError(d.error ?? `Request failed (${res.status})`, res.status, Boolean(d.aiUnavailable), Boolean(d.needsPro));
+  }
   return data as T;
 }
 

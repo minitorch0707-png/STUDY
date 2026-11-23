@@ -297,4 +297,17 @@ CREATE INDEX idx_gen_task ON ai_generations(task, created_at);
 ALTER TABLE chat_messages ADD COLUMN generation_id TEXT;
 `,
   },
+  {
+    id: 3,
+    sql: `
+-- Errors and warnings shown on Settings → Help & diagnostics (never file contents).
+CREATE TABLE app_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  level TEXT NOT NULL,           -- error | warn | info
+  source TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+`,
+  },
 ];

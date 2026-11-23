@@ -14,6 +14,7 @@ import { getSettings } from "@/lib/settings";
 import { runInBackground } from "./generations";
 import { extractTopicsForDocument } from "./topics";
 import { touchCourse } from "./courses";
+import { logEvent } from "@/lib/logs";
 
 export const PARSER_VERSION = 1;
 
@@ -78,7 +79,10 @@ export type UploadResult = { ok: true; document: DocumentRow; duplicate?: boolea
 export function addUpload(courseId: string, filename: string, buf: Buffer, replaceId?: string): UploadResult {
   const safeName = path.basename(filename).replace(/[\u0000-\u001f]/g, "").slice(0, 200) || "file";
   const v = validateUpload(safeName, buf);
-  if (!v.ok) return { ok: false, error: v.error, filename: safeName };
+  if (!v.ok) {
+    logEvent("warn", "upload", `Rejected ${safeName.replace(/^.*(\.[^.]+)$/, "file$1")} (${buf.length} bytes): ${v.error}`);
+    return { ok: false, error: v.error, filename: safeName };
+  }
   const sha = crypto.createHash("sha256").update(buf).digest("hex");
 
   // Same file already in this course → reuse the stored, processed copy.
@@ -241,6 +245,7 @@ export async function processDocument(id: string) {
     touchCourse(doc.course_id);
   } catch (e) {
     console.error("ingest failed", e);
+    logEvent("error", "ingest", `${doc.ext} file (${doc.size} bytes) failed: ${(e as Error).message}\n${((e as Error).stack ?? "").split("\n").slice(1, 4).join("\n")}`);
     db().prepare("UPDATE documents SET warnings = ? WHERE id = ?").run(JSON.stringify(warnings), id);
     setStatus(id, "failed", `Processing failed: ${(e as Error).message}`.slice(0, 500), 1);
   }

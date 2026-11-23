@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { ArrowRight, BookOpen, CalendarClock, CheckCircle2, Circle, Flame, Layers, Lightbulb, Sparkles, Target, TrendingDown, Upload } from "lucide-react";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, Skeleton, cn } from "@/components/ui";
 import { CourseDot, MasteryBar, type Mastery } from "@/components/learning";
@@ -30,7 +32,16 @@ function planHref(i: Dashboard["plan"][number]) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data, loading, reload } = useApi<Dashboard>("/api/dashboard");
+  // First run: send new students to the one-click AI setup.
+  useEffect(() => {
+    api<{ setupComplete: boolean; ai: { reachable: boolean }; models: { chat: boolean } }>("/api/setup")
+      .then((s) => {
+        if (!s.setupComplete && !(s.ai.reachable && s.models.chat)) router.replace("/setup");
+      })
+      .catch(() => {});
+  }, [router]);
   const nextExam = data?.upcoming.find((e) => e.kind === "exam");
 
   const toggle = async (id: string, done: boolean) => {

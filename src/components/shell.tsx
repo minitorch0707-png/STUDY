@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "./ui";
-import { useApi } from "@/lib/client";
+import { openUpgrade, useApi } from "@/lib/client";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -102,6 +102,19 @@ function AIStatus() {
   );
 }
 
+function ProCard() {
+  const { data } = useApi<{ enabled: boolean; pro: boolean; proName: string; price: string }>("/api/license");
+  if (!data?.enabled || data.pro) return null;
+  return (
+    <button onClick={() => openUpgrade()} className="w-full rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 p-3 text-left text-white shadow-card transition-opacity hover:opacity-95">
+      <div className="flex items-center gap-1.5 text-sm font-semibold">
+        <Sparkles className="size-4" /> {data.proName}
+      </div>
+      <div className="mt-0.5 text-xs text-white/85">Unlimited courses, exam simulations, AI marking and the planner · {data.price}</div>
+    </button>
+  );
+}
+
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   return (
@@ -144,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
   // Distraction-free review mode
-  const focus = path.startsWith("/flashcards/review");
+  const focus = path.startsWith("/flashcards/review") || path.startsWith("/setup");
 
   return (
     <div className="flex min-h-screen">
@@ -158,6 +171,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLinks />
           </div>
           <div className="space-y-3">
+            <ProCard />
             <AIStatus />
             <ThemeToggle compact />
           </div>

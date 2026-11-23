@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { AlertTriangle, CalendarDays, CheckCircle2, Circle, Flame, Plus, Trash2, Zap } from "lucide-react";
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorNote, Field, InfoNote, Input, PageHeader, ProgressBar, Select, Skeleton, cn } from "@/components/ui";
 import { CourseDot } from "@/components/learning";
+import { ProBadge, useLicense } from "@/components/pro";
 import { Modal, useToast } from "@/components/overlay";
 import { EventEditor } from "@/components/event-editor";
 import { api, formatDate, localToday, relativeDays, useApi } from "@/lib/client";
@@ -148,6 +149,7 @@ function PlannerInner() {
   const [planOpen, setPlanOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const { data: courses } = useApi<{ id: string; title: string }[]>("/api/courses");
+  const { data: lic } = useLicense();
   const [addCourse, setAddCourse] = useState("");
 
   useEffect(() => {
@@ -177,7 +179,7 @@ function PlannerInner() {
               Add date
             </Button>
             <Button onClick={() => setPlanOpen(true)} icon={<CalendarDays className="size-4" />} disabled={!courses?.length}>
-              New study plan
+              New study plan <ProBadge show={Boolean(lic?.enabled && !lic.pro)} />
             </Button>
           </>
         }

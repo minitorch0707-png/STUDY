@@ -11,6 +11,11 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "warn",
     },
   },
+  {
+    // Electron's main process uses CommonJS.
+    files: ["desktop/**/*.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -18,6 +23,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "desktop/node_modules/**",
+    "desktop/dist/**",
+    "desktop/resources/**",
   ]),
 ]);
 

@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Cpu, Download, Gauge, HardDrive, KeyRound, Loader2, Palette, RefreshCw, Shield, Trash2, XCircle, MonitorPlay as Youtube } from "lucide-react";
 import { Badge, Button, Card, CardHeader, ErrorNote, Field, InfoNote, Input, PageHeader, ProgressBar, Select, Skeleton, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/shell";
+import { LicenseForm, useLicense } from "@/components/pro";
+import { Copy, LifeBuoy, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useToast } from "@/components/overlay";
 import { api, formatBytes, readStream, useApi } from "@/lib/client";
 
@@ -97,14 +100,12 @@ function Models({ settings, save }: { settings: Settings; save: (p: Partial<Sett
         {!st.reachable && settings.aiProvider === "ollama" && (
           <div className="px-5 pb-5">
             <InfoNote tone="warning">
-              <b>Set up Ollama (one time, about 5 minutes):</b>
-              <ol className="mt-1.5 list-decimal space-y-0.5 pl-5">
-                <li>
-                  Download and install Ollama from <b>ollama.com</b> (Mac app).
-                </li>
-                <li>Open the Ollama app — it runs quietly in your menu bar.</li>
-                <li>Come back here and click Refresh, then install the recommended models below.</li>
-              </ol>
+              <b>The AI isn&apos;t set up yet.</b> LectureLab can install everything for you in one click (free, runs on this computer).
+              <div className="mt-2">
+                <Link href="/setup" className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-[13px] font-medium text-white hover:bg-primary-hover">
+                  Set up automatically
+                </Link>
+              </div>
             </InfoNote>
           </div>
         )}
@@ -387,6 +388,84 @@ function Integrations({ settings, save }: { settings: Settings; save: (p: Record
   );
 }
 
+function ProSection() {
+  const { data, setData } = useLicense();
+  if (!data?.enabled) return null;
+  return (
+    <section id="pro">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-2">
+        <Sparkles className="size-4" /> {data.proName}
+      </h2>
+      <Card className="space-y-4 p-5">
+        {!data.pro && (
+          <>
+            <p className="text-sm text-text-2">
+              The free plan includes everything for {data.freeCourseLimit} courses. {data.proName} ({data.price}) adds: {data.features.join(" · ")}.
+            </p>
+            {data.buyUrl && (
+              <a href={data.buyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-white hover:bg-primary-hover">
+                Get {data.proName} — {data.price}
+              </a>
+            )}
+          </>
+        )}
+        {data.status === "invalid" && <p className="text-sm text-danger">Your licence is no longer valid (refunded, expired or disabled). Enter a new key below.</p>}
+        <LicenseForm info={data} onChange={setData} />
+      </Card>
+    </section>
+  );
+}
+
+function HelpSection() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const { data } = useApi<{ logs: { level: string; source: string; message: string; created_at: string }[] }>("/api/diagnostics");
+  const problems = data?.logs.filter((l) => l.level !== "info") ?? [];
+  return (
+    <section id="help">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-2">
+        <LifeBuoy className="size-4" /> Help & diagnostics
+      </h2>
+      <Card className="space-y-3 p-5 text-sm">
+        <p className="text-text-2">Something not working? Copy the diagnostics and paste them into a GitHub issue or message. They include your app version, computer type and recent errors, but never your files or keys.</p>
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={busy}
+          icon={<Copy className="size-3.5" />}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const d = await api("/api/diagnostics");
+              await navigator.clipboard.writeText("LectureLab diagnostics\n```json\n" + JSON.stringify(d, null, 2) + "\n```");
+              toast("Diagnostics copied — paste them where you're asking for help");
+            } catch (e) {
+              toast(`Couldn't copy: ${(e as Error).message}`, "error");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Copy diagnostics
+        </Button>
+        {problems.length > 0 && (
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted">Recent problems ({problems.length})</summary>
+            <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
+              {problems.map((l, i) => (
+                <li key={i} className="rounded-lg bg-surface-2 px-2.5 py-1.5">
+                  <span className={l.level === "error" ? "text-danger" : "text-warning"}>{l.source}</span> · {new Date(l.created_at).toLocaleString()}
+                  <div className="whitespace-pre-wrap text-text-2">{l.message.split("\n")[0]}</div>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </Card>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const toast = useToast();
   const { data: settings, reload } = useApi<Settings>("/api/settings");
@@ -429,6 +508,9 @@ export default function SettingsPage() {
 
         <section>{settings && <Advanced settings={settings} save={save} />}</section>
         <section>{settings && <Integrations settings={settings} save={save} />}</section>
+
+        <ProSection />
+        <HelpSection />
 
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-2">

@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { body, handle } from "@/lib/api";
 import { createPlan, listPlans } from "@/lib/services/planner";
+import { requirePro } from "@/lib/license";
 
 export const GET = handle(() => Response.json(listPlans()));
 export const POST = handle(async (req: Request) => {
+  requirePro("studyPlanner");
   const b = await body(
     req,
     z.object({

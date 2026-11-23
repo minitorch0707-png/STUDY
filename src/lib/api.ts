@@ -2,6 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { AIUnavailableError } from "@/lib/ai/types";
 import { resumeInterruptedJobs } from "@/lib/services/documents";
+import { logEvent } from "@/lib/logs";
+import { LicenseError } from "@/lib/license";
 
 /** Shared helpers for API routes: consistent errors, validation and rate limits. */
 
@@ -17,10 +19,12 @@ export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response
     try {
       return await fn(...args);
     } catch (e) {
+      if (e instanceof LicenseError) return Response.json({ error: e.message, needsPro: true }, { status: 402 });
       if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
       if (e instanceof AIUnavailableError) return Response.json({ error: e.message, aiUnavailable: true }, { status: 503 });
       if (e instanceof z.ZodError) return Response.json({ error: e.issues.map((i) => i.message).join("; ") }, { status: 400 });
       console.error(e);
+      logEvent("error", "api", `${(e as Error).name}: ${(e as Error).message}\n${((e as Error).stack ?? "").split("\n").slice(1, 4).join("\n")}`);
       return Response.json({ error: "Something went wrong on our side. Please try again." }, { status: 500 });
     }
   };
