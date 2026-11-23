@@ -109,7 +109,20 @@ export function dashboard() {
   const due = (db().prepare("SELECT COUNT(*) n FROM cards WHERE due_at <= ? AND state != 'new'").get(nowIso()) as { n: number }).n;
   const fresh = (db().prepare("SELECT COUNT(*) n FROM cards WHERE state = 'new'").get() as { n: number }).n;
   const streak = studyStreak();
-  return { recommendations: recommendations(5), plan: todaysPlanItems(), struggling, upcoming: upcomingEvents(4), flashcards: { due, fresh }, streak };
+  const count = (sql: string) => (db().prepare(sql).get() as { n: number }).n;
+  const firstCourse = db().prepare("SELECT id FROM courses ORDER BY updated_at DESC LIMIT 1").get() as { id: string } | undefined;
+  const firstTopic = db().prepare("SELECT id FROM topics ORDER BY importance DESC, ord LIMIT 1").get() as { id: string } | undefined;
+  const onboarding = {
+    courses: count("SELECT COUNT(*) n FROM courses"),
+    documents: count("SELECT COUNT(*) n FROM documents WHERE status = 'ready'"),
+    lessons: count("SELECT COUNT(*) n FROM lessons") + count("SELECT COUNT(*) n FROM chat_messages"),
+    quizzes: count("SELECT COUNT(*) n FROM attempts WHERE status = 'graded'"),
+    reviews: count("SELECT COUNT(*) n FROM reviews"),
+    notes: count("SELECT COUNT(*) n FROM notes WHERE content != ''"),
+    courseId: firstCourse?.id ?? null,
+    topicId: firstTopic?.id ?? null,
+  };
+  return { recommendations: recommendations(5), plan: todaysPlanItems(), struggling, upcoming: upcomingEvents(4), flashcards: { due, fresh }, streak, onboarding };
 }
 
 export function studyStreak(): number {

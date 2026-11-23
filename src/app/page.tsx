@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import { ArrowRight, BookOpen, CalendarClock, CheckCircle2, Circle, Flame, Layers, Lightbulb, Sparkles, Target, TrendingDown, Upload } from "lucide-react";
-import { Badge, ButtonLink, Card, CardHeader, EmptyState, Skeleton, cn } from "@/components/ui";
+import { Badge, ButtonLink, Card, CardHeader, ProgressBar, Skeleton, cn } from "@/components/ui";
 import { CourseDot, MasteryBar, type Mastery } from "@/components/learning";
 import { api, daysUntil, formatDate, useApi } from "@/lib/client";
 
@@ -15,6 +15,76 @@ interface Dashboard {
   upcoming: { id: string; title: string; kind: string; date: string; course_title: string; course_color: string; weight: number | null }[];
   flashcards: { due: number; fresh: number };
   streak: number;
+  onboarding: { courses: number; documents: number; lessons: number; quizzes: number; reviews: number; notes: number; courseId: string | null; topicId: string | null };
+}
+
+function GettingStarted({ o }: { o: Dashboard["onboarding"] }) {
+  const steps = [
+    { done: o.courses > 0, title: "Create a course", body: "One for each class you're taking.", href: "/courses?new=1", cta: "Create course" },
+    { done: o.documents > 0, title: "Add your lecture files", body: "Slides, PDFs, Word docs, notes or photos — old or new formats.", href: o.courseId ? `/courses/${o.courseId}` : "/courses", cta: "Upload files" },
+    { done: o.lessons > 0, title: "Learn a topic with the AI tutor", body: "It teaches from your slides and cites them.", href: o.topicId ? `/tutor/${o.topicId}` : "/tutor", cta: "Open tutor" },
+    { done: o.quizzes > 0, title: "Take a practice quiz", body: "Find out what you really know.", href: o.courseId ? `/exams/new?course=${o.courseId}` : "/exams/new", cta: "Make a quiz" },
+    { done: o.reviews > 0, title: "Review flashcards", body: "Five minutes a day beats cramming.", href: "/flashcards", cta: "Flashcards" },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  if (doneCount === steps.length) return null;
+  const next = steps.findIndex((s) => !s.done);
+  return (
+    <Card className="mb-4 overflow-hidden">
+      <div className="flex flex-col gap-1 border-b border-border bg-gradient-to-r from-primary-soft to-transparent px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-[15px] font-semibold">Getting started</h2>
+          <p className="text-[13px] text-muted">Five quick steps to your first study session.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <ProgressBar value={doneCount / steps.length} className="w-32" label="Getting started progress" />
+          <span className="text-xs font-medium tabular-nums text-muted">{doneCount}/{steps.length}</span>
+        </div>
+      </div>
+      <ol className="divide-y divide-border">
+        {steps.map((s, i) => (
+          <li key={s.title} className={cn("flex items-center gap-4 px-5 py-3", i === next && "bg-surface-2/60")}>
+            <div className={cn("grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold", s.done ? "bg-success text-white" : i === next ? "bg-primary text-white" : "bg-surface-3 text-muted")}>
+              {s.done ? <CheckCircle2 className="size-4" /> : i + 1}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className={cn("text-sm font-medium", s.done && "text-muted line-through")}>{s.title}</div>
+              {!s.done && <div className="text-xs text-muted">{s.body}</div>}
+            </div>
+            {i === next && (
+              <ButtonLink href={s.href} size="sm">
+                {s.cta}
+              </ButtonLink>
+            )}
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
+
+function QuickActions({ o, due }: { o: Dashboard["onboarding"]; due: number }) {
+  const actions = [
+    { icon: Upload, label: "Upload slides", sub: "PowerPoint, PDF, Word…", href: o.courseId ? `/courses/${o.courseId}` : "/courses?new=1", tint: "from-indigo-500 to-violet-500" },
+    { icon: Sparkles, label: "Ask the tutor", sub: "Learn any topic", href: o.topicId ? `/tutor/${o.topicId}` : "/tutor", tint: "from-sky-500 to-indigo-500" },
+    { icon: Target, label: "Practice quiz", sub: "Test yourself", href: o.courseId ? `/exams/new?course=${o.courseId}` : "/exams/new", tint: "from-rose-500 to-orange-400" },
+    { icon: Layers, label: "Review cards", sub: due ? `${due} due now` : "Spaced repetition", href: "/flashcards/review", tint: "from-emerald-500 to-teal-500" },
+  ];
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {actions.map((a) => (
+        <Link key={a.label} href={a.href} className="group flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-pop">
+          <div className={cn("grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white shadow-card", a.tint)}>
+            <a.icon className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">{a.label}</div>
+            <div className="truncate text-xs text-muted">{a.sub}</div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 const REC_ICON: Record<string, typeof Sparkles> = { relearn: TrendingDown, flashcards: Layers, quiz: Target, start: Sparkles, plan: CalendarClock, upload: Upload, exam: CalendarClock };
@@ -32,7 +102,16 @@ function planHref(i: Dashboard["plan"][number]) {
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardInner />
+    </Suspense>
+  );
+}
+
+function DashboardInner() {
   const router = useRouter();
+  const params = useSearchParams();
   const { data, loading, reload } = useApi<Dashboard>("/api/dashboard");
   // First run: send new students to the one-click AI setup.
   useEffect(() => {
@@ -64,6 +143,17 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {data && params.get("welcome") && (
+        <Card className="mb-4 flex items-center gap-4 border-success/30 bg-success-soft/60 p-4">
+          <CheckCircle2 className="size-6 shrink-0 text-success" />
+          <div className="text-sm">
+            <b>Your private AI tutor is ready.</b> Everything runs on this computer, free and offline.
+          </div>
+        </Card>
+      )}
+      {data && <QuickActions o={data.onboarding} due={data.flashcards.due} />}
+      {data && <GettingStarted o={data.onboarding} />}
 
       {/* The three questions: what today, what am I struggling with, when is my exam */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -218,16 +308,6 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {data && data.recommendations.length === 1 && data.recommendations[0].kind === "upload" && (
-        <Card className="mt-4">
-          <EmptyState
-            icon={<BookOpen className="size-5" />}
-            title="Let's set up your first course"
-            body="Create a course, drop in your slides, readings and syllabus, and LectureLab turns them into lessons, practice exams and flashcards."
-            action={<ButtonLink href={data.recommendations[0].href}>Get started</ButtonLink>}
-          />
-        </Card>
-      )}
     </div>
   );
 }

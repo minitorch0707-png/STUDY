@@ -89,6 +89,24 @@ body {
 
 body {
   font-feature-settings: "cv11", "ss01";
+  /* A soft brand glow at the top of every page. */
+  background-image: radial-gradient(1100px 420px at 70% -120px, color-mix(in srgb, var(--primary) 9%, transparent), transparent 70%);
+  background-attachment: fixed;
+}
+
+/* Headings use a friendlier display typeface. */
+h1,
+h2.font-display,
+.font-display {
+  font-family: var(--font-display), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black;
+  }
 }
 
 ::selection {

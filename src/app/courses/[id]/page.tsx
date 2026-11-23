@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   BookOpen,
@@ -29,6 +29,7 @@ import { CourseForm } from "@/components/course-form";
 import { MasteryBadge, MasteryBar, type Mastery } from "@/components/learning";
 import { api, formatBytes, formatDate, relativeDays, useApi } from "@/lib/client";
 import { courseColor } from "@/lib/colors";
+import { formatBadge, unitName } from "@/lib/formats";
 
 interface Doc {
   id: string;
@@ -114,8 +115,8 @@ function DocRow({ d, onChange }: { d: Doc; onChange: () => void }) {
   return (
     <li className="px-4 py-3.5 sm:px-5">
       <div className="flex items-center gap-3">
-        <div className={cn("grid size-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold uppercase", d.ext === "pdf" ? "bg-red-500/10 text-red-600 dark:text-red-400" : d.ext === "pptx" ? "bg-orange-500/10 text-orange-600 dark:text-orange-400" : d.ext === "docx" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : "bg-surface-2 text-muted")}>
-          {d.ext}
+        <div className={cn("grid size-10 shrink-0 place-items-center rounded-xl text-[10px] font-bold uppercase", formatBadge(d.ext, d.original_name).className)}>
+          {formatBadge(d.ext, d.original_name).label}
         </div>
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -142,7 +143,7 @@ function DocRow({ d, onChange }: { d: Doc; onChange: () => void }) {
           )}
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
             <span>{formatBytes(d.size)}</span>
-            {d.section_count > 0 && <span>· {d.section_count} {d.ext === "pptx" ? "slides" : d.ext === "pdf" ? "pages" : "sections"}</span>}
+            {d.section_count > 0 && <span>· {d.section_count} {unitName(d.ext, d.section_count)}</span>}
             {d.status === "ready" && d.warnings.length > 0 && (
               <button onClick={() => setShowWarn(!showWarn)} className="flex items-center gap-1 text-warning hover:underline">
                 <AlertTriangle className="size-3" /> {d.warnings.length} note{d.warnings.length > 1 ? "s" : ""}
@@ -461,6 +462,15 @@ export default function CoursePage() {
     poll: (d) => (d?.documents.some((x) => !["ready", "failed"].includes(x.status)) ? 1500 : false),
   });
 
+  // Show a "ready" banner when files finish processing while the student watches.
+  const wasProcessing = useRef(false);
+  const [justFinished, setJustFinished] = useState(false);
+  const busyNow = Boolean(data?.documents.some((x) => !["ready", "failed"].includes(x.status)));
+  useEffect(() => {
+    if (wasProcessing.current && !busyNow) setJustFinished(true);
+    wasProcessing.current = busyNow;
+  }, [busyNow]);
+
   if (error) return <ErrorNote>{error}</ErrorNote>;
   if (!data)
     return (
@@ -496,6 +506,18 @@ export default function CoursePage() {
           </div>
         </div>
       </div>
+
+      {justFinished && data.topics.length > 0 && tab === "materials" && (
+        <Card className="mb-5 flex flex-col gap-3 border-success/30 bg-success-soft/50 p-4 animate-rise sm:flex-row sm:items-center">
+          <Sparkles className="size-5 shrink-0 text-success" />
+          <div className="flex-1 text-sm">
+            <b>Your files are ready.</b> LectureLab found {data.topics.length} topic{data.topics.length === 1 ? "" : "s"} to learn.
+          </div>
+          <Button size="sm" onClick={() => setTab("topics")}>
+            See topics
+          </Button>
+        </Card>
+      )}
 
       <div className="mb-5">
         <Tabs

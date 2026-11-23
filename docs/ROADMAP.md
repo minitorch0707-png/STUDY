@@ -10,7 +10,9 @@ Items marked ✅ are done. The next milestone is at the top. Want to help? Pick 
 - [x] Clear guidance for `.ppt`, `.doc`, Keynote and Pages files
 - [x] Tolerate small-model output quirks (numbers sent as text)
 - [ ] Read scanned PDFs (render each page and send it to the vision model for text recognition)
-- [ ] Convert `.ppt` automatically when LibreOffice is installed
+- [x] Old PowerPoint (.ppt) and Word (.doc) files, plus RTF, OpenDocument, HTML, EPUB, CSV, and photos (via the image reader)
+- [x] Automatic study notes from tutor conversations
+- [x] Getting-started checklist and quick actions on Home
 
 ## Milestone 2: Better teaching quality
 

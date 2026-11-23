@@ -12,6 +12,7 @@ import {
   Layers,
   LayoutDashboard,
   Menu,
+  NotebookPen,
   Monitor,
   Moon,
   Settings,
@@ -22,15 +23,36 @@ import {
 import { cn } from "./ui";
 import { openUpgrade, useApi } from "@/lib/client";
 
-const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/courses", label: "My Courses", icon: BookOpen },
-  { href: "/tutor", label: "AI Tutor", icon: Sparkles },
-  { href: "/exams", label: "Practice Exams", icon: ClipboardCheck },
-  { href: "/flashcards", label: "Flashcards", icon: Layers },
-  { href: "/planner", label: "Study Planner", icon: CalendarDays },
-  { href: "/progress", label: "Progress", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
+const NAV_GROUPS = [
+  {
+    label: null,
+    items: [
+      { href: "/", label: "Home", icon: LayoutDashboard },
+      { href: "/courses", label: "My Courses", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Learn",
+    items: [
+      { href: "/tutor", label: "AI Tutor", icon: Sparkles },
+      { href: "/notes", label: "Notes", icon: NotebookPen },
+    ],
+  },
+  {
+    label: "Practice",
+    items: [
+      { href: "/exams", label: "Practice Exams", icon: ClipboardCheck },
+      { href: "/flashcards", label: "Flashcards", icon: Layers },
+    ],
+  },
+  {
+    label: "Plan",
+    items: [
+      { href: "/planner", label: "Study Planner", icon: CalendarDays },
+      { href: "/progress", label: "Progress", icon: BarChart3 },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 type Theme = "light" | "dark" | "system";
@@ -118,25 +140,33 @@ function ProCard() {
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   return (
-    <nav className="space-y-0.5" aria-label="Main">
-      {NAV.map((n) => {
-        const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
-        return (
-          <Link
-            key={n.href}
-            href={n.href}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
-              active ? "bg-primary-soft text-primary-text" : "text-text-2 hover:bg-surface-2 hover:text-text",
-            )}
-          >
-            <n.icon className={cn("size-[18px]", active ? "text-primary-text" : "text-muted group-hover:text-text")} />
-            {n.label}
-          </Link>
-        );
-      })}
+    <nav className="space-y-5" aria-label="Main">
+      {NAV_GROUPS.map((g, gi) => (
+        <div key={gi}>
+          {g.label && <div className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted/80">{g.label}</div>}
+          <div className="space-y-0.5">
+            {g.items.map((n) => {
+              const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                    active ? "bg-primary-soft text-primary-text" : "text-text-2 hover:bg-surface-2 hover:text-text",
+                  )}
+                >
+                  {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary" aria-hidden />}
+                  <n.icon className={cn("size-[18px] transition-transform group-hover:scale-105", active ? "text-primary-text" : "text-muted group-hover:text-text")} />
+                  {n.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 }
@@ -165,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       {!focus && (
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-surface/60 px-3 py-5 backdrop-blur lg:flex">
+        <aside className="sticky top-0 hidden h-screen print:!hidden w-64 shrink-0 flex-col border-r border-border bg-surface/60 px-3 py-5 backdrop-blur lg:flex">
           <Logo />
           <div className="mt-7 flex-1 overflow-y-auto">
             <NavLinks />
@@ -180,7 +210,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile top bar */}
       {!focus && (
-        <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/85 px-4 backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 top-0 z-30 flex h-14 print:hidden items-center justify-between border-b border-border bg-surface/85 px-4 backdrop-blur lg:hidden">
           <Logo />
           <button onClick={() => setOpen(true)} className="rounded-lg p-2 hover:bg-surface-2" aria-label="Open menu">
             <Menu className="size-5" />
@@ -208,7 +238,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main id="main" className={cn("min-w-0 flex-1", !focus && "pt-14 lg:pt-0")}>
+      <main id="main" className={cn("min-w-0 flex-1 print:pt-0", !focus && "pt-14 lg:pt-0")}>
         <div className={cn("mx-auto w-full", focus ? "max-w-4xl px-4 py-6" : "max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10")}>{children}</div>
       </main>
     </div>

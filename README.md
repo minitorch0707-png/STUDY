@@ -20,7 +20,7 @@ A free desktop app for Mac and Windows. The AI runs on *your* computer: no subsc
 2. **Install it.**
    - **Mac:** open the downloaded file and drag LectureLab into Applications. The first time you open it, macOS may say it can't verify the app. Go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
    - **Windows:** run the installer. If you see "Windows protected your PC", click **More info → Run anyway**. You only do this once.
-3. **Click "Set everything up".** LectureLab downloads its free AI (about 4 GB, one time) and picks the right size for your computer. Then create a course and drop in your slides.
+3. **Click "Set everything up".** LectureLab downloads its free AI (about 4 GB, one time) and picks the right size for your computer. Then follow the **Getting started** checklist on the Home screen.
 
 That's it. No Terminal, no accounts. Updates arrive inside the app.
 
@@ -29,12 +29,13 @@ That's it. No Terminal, no accounts. Updates arrive inside the app.
 | | |
 |---|---|
 | 🧑‍🏫 **AI Tutor**: lessons built from *your* slides. Every claim links back to the exact slide or page. Ask follow-ups, or hit *Explain simpler*, *Give me an example* or *Quiz me*. | ![Tutor](docs/screenshots/source-slide.png) |
+| 🗒️ **Automatic notes**: every conversation with the tutor becomes tidy study notes (key ideas, definitions, examples, your questions) that you can edit, search, print or download. | ![Notes](docs/screenshots/notes.png) |
 | 📝 **Practice exams**: multiple choice, true/false, short answer, essays and more, with clear rubric feedback that shows what you missed. | ![Exam feedback](docs/screenshots/exam-written-feedback.png) |
 | 🃏 **Flashcards**: made from your material, with spaced repetition so cards come back just before you'd forget them. | ![Flashcard](docs/screenshots/flashcard.png) |
 | 📅 **Study planner**: finds exam dates in your syllabus and builds a day-by-day plan around your weakest topics. | ![Planner](docs/screenshots/study-plan.png) |
 | 📈 **Progress**: strengths and weaknesses per topic, based on your real answers. | ![Progress](docs/screenshots/progress.png) |
 
-Works with **PDF, PowerPoint (.pptx), Word (.docx)** and notes. Got an old `.ppt`, a Keynote file or Google Slides? The app tells you exactly how to convert it.
+Reads **PowerPoint (.pptx and old .ppt), PDF, Word (.docx and old .doc)**, OpenDocument, RTF, text and markdown, web pages, e-books (EPUB), CSV, and photos of notes or whiteboards (with the optional image reader). Got a Keynote file or a Google Slides link? The app tells you exactly how to export it.
 
 ## Free and Pro
 
@@ -93,6 +94,6 @@ npm run typecheck && npm run lint && npm test
 | [`src/lib/learning`](src/lib/learning) | Flashcard scheduling, mastery scores, grading, planner |
 | [`src/lib/product.ts`](src/lib/product.ts) | **Price, store and Free vs Pro settings** |
 | [`desktop`](desktop) | The Mac/Windows app shell (Electron) |
-| [`docs`](docs) | [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Selling Pro](docs/SELLING.md) · [Releasing](docs/RELEASING.md) · [Business plan](docs/BUSINESS.md) |
+| [`docs`](docs) | [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Selling Pro](docs/SELLING.md) · [Releasing](docs/RELEASING.md) · [Business plan](docs/BUSINESS.md) · [Design brief](docs/DESIGN_BRIEF.md) |
 
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
