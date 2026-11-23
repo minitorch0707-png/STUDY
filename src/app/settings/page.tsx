@@ -23,6 +23,7 @@ interface Settings {
   thinking: boolean;
   youtubeApiKeySet: boolean;
   describeImages: boolean;
+  autoNotes: boolean;
 }
 interface Overview {
   status: { provider: string; reachable: boolean; version?: string; error?: string; chatModel: { name: string; installed: boolean }; embeddingModel: { name: string; installed: boolean }; visionModel: { name: string; installed: boolean } | null };
@@ -272,6 +273,7 @@ function Advanced({ settings, save }: { settings: Settings; save: (p: Record<str
             contextWindow: Number(v.contextWindow),
             thinking: v.thinking,
             describeImages: v.describeImages,
+            autoNotes: v.autoNotes,
           });
         }}
       >
@@ -317,6 +319,12 @@ function Advanced({ settings, save }: { settings: Settings; save: (p: Record<str
           </Select>
         </Field>
         <div className="space-y-3 sm:col-span-2">
+          <label className="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={v.autoNotes} onChange={(e) => setV({ ...v, autoNotes: e.target.checked })} className="mt-0.5 size-4 accent-[var(--primary)]" />
+            <span>
+              <b>Turn tutor conversations into notes automatically</b> <span className="text-muted">— about a minute after you stop chatting, your topic notes are updated.</span>
+            </span>
+          </label>
           <label className="flex items-start gap-2.5 text-sm">
             <input type="checkbox" checked={v.thinking} onChange={(e) => setV({ ...v, thinking: e.target.checked })} className="mt-0.5 size-4 accent-[var(--primary)]" />
             <span>

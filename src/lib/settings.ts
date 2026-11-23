@@ -19,6 +19,7 @@ export interface AppSettings {
   youtubeApiKey: string;
   describeImages: boolean;    // run the vision model over slide images during upload
   setupComplete: boolean;     // first-run setup finished (or skipped)
+  autoNotes: boolean;         // turn tutor conversations into notes automatically
   licenseKey: string;         // Pro licence key (secret)
   licenseInstanceId: string;  // activation id from the licence provider
   licenseStatus: "none" | "active" | "invalid";
@@ -40,6 +41,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   youtubeApiKey: "",
   describeImages: false,
   setupComplete: false,
+  autoNotes: true,
   licenseKey: "",
   licenseInstanceId: "",
   licenseStatus: "none",

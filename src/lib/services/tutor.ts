@@ -9,6 +9,7 @@ import { numericString } from "./quiz";
 import { getSettings } from "@/lib/settings";
 import { logGeneration } from "./generations";
 import { getTopic, recordEvent, topicSectionIds } from "./topics";
+import { scheduleAutoNotes } from "./notes";
 
 export type StreamEvent =
   | { type: "sources"; sources: SourceRef[]; mode: string }
@@ -89,6 +90,7 @@ export async function* streamLesson(topicId: string): AsyncGenerator<StreamEvent
   db().prepare("INSERT INTO lessons (id, topic_id, content, sources, checks, model, created_at) VALUES (?,?,?,?,?,?,?)").run(id, topicId, text, JSON.stringify(ctx.refs), "[]", llm.model, nowIso());
   logGeneration({ task: "lesson", model: llm.model, prompt, output: text, durationMs: Date.now() - started, refId: id });
   recordActivity(ctx.topic.course_id, topicId);
+  scheduleAutoNotes(topicId);
   yield { type: "done", id };
 }
 
@@ -206,6 +208,7 @@ export async function* streamTutorReply(opts: { topicId: string; message?: strin
   db()
     .prepare("INSERT INTO chat_messages (id, topic_id, role, content, action, strategy, sources, generation_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)")
     .run(id, opts.topicId, "assistant", text, opts.action ?? null, adapt.strategy, JSON.stringify(ctx.refs), genId, nowIso());
+  scheduleAutoNotes(opts.topicId);
   yield { type: "done", id };
 }
 

@@ -41,6 +41,9 @@ const fakeLLM: LLMProvider & { calls: string[] } = {
       out = { points: [{ met: "yes", comment: "Good." }, { met: "partial", comment: "Mention reasonable person." }], missing: ["reasonable person standard"], feedback: "Solid start." };
     } else if (p.includes("flashcards")) {
       out = { cards: [{ front: "What is recklessness?", back: "Awareness of a risk and proceeding anyway.", sourceId: "S1" }, { front: "What is wilful blindness?", back: "Deliberately avoiding confirming a suspicion.", sourceId: "S1" }] };
+    } else if (p.includes("personal study notes")) {
+      this.calls.push(p);
+      return { text: "## Key ideas\n- Recklessness requires awareness of the risk (Slide 3, Week 3 - Lecture 3 - Mens Rea)\n## Questions I asked\n- **Q:** simpler? — **A:** aware vs should have known", model: this.model };
     } else if (p.includes("knowledge checks")) {
       out = { checks: [{ question: "Mens rea means?", options: ["Guilty mind", "Guilty act", "Defence", "Sentence"], correctIndex: 0, explanation: "[S1]" }] };
     } else out = {};
@@ -84,6 +87,7 @@ let m: {
   progress: typeof import("@/lib/services/progress");
   rag: typeof import("@/lib/rag/retrieve");
   db: typeof import("@/lib/db");
+  notes: typeof import("@/lib/services/notes");
 };
 
 beforeAll(async () => {
@@ -100,6 +104,7 @@ beforeAll(async () => {
     progress: await import("@/lib/services/progress"),
     rag: await import("@/lib/rag/retrieve"),
     db: await import("@/lib/db"),
+    notes: await import("@/lib/services/notes"),
   };
 });
 
@@ -161,6 +166,26 @@ describe("full learning flow", () => {
     const evs = [];
     for await (const ev of m.tutor.streamTutorReply({ topicId, action: "simpler" })) evs.push(ev);
     expect(evs.find((e) => e.type === "meta")).toMatchObject({ adaptive: true });
+  });
+
+  it("turns the tutor conversation into notes, keeping the student's edits", async () => {
+    const chat = m.tutor.getChat(topicId);
+    const answer = chat.find((c) => c.role === "assistant")!;
+    // One-click save works without AI and makes citations readable.
+    m.notes.saveMessageToNotes(topicId, answer.id);
+    let { note } = m.notes.topicNote(topicId);
+    expect(note!.content).toContain("### Saved:");
+    expect(note!.content).not.toMatch(/\[S\d\]/);
+    // The student edits their notes; the automatic update must be told to keep that.
+    m.notes.updateNote(note!.id, { content: note!.content + "\nMY OWN MNEMONIC: aware = reckless" });
+    await m.notes.refreshTopicNotes(topicId);
+    const prompt = fakeLLM.calls.filter((c) => c.includes("personal study notes")).at(-1)!;
+    expect(prompt).toContain("MY OWN MNEMONIC");
+    expect(prompt).toContain("KEEP their wording");
+    note = m.notes.topicNote(topicId).note;
+    expect(note!.content).toContain("## Key ideas");
+    expect(note!.synced_until).toBeTruthy();
+    expect(m.notes.listNotes({ q: "Recklessness" }).length).toBe(1);
   });
 
   it("generates a quiz, rejects bad questions, grades objective + written answers", async () => {

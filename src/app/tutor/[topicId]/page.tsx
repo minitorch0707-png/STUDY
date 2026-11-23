@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   ExternalLink,
+  NotebookPen,
   FileText,
   GitCompare,
   HelpCircle,
@@ -85,6 +86,64 @@ function SourcePreview({ source, onClose }: { source: SourceRef | null; onClose:
         </div>
       )}
     </Modal>
+  );
+}
+
+function NotesCard({ topicId, tick }: { topicId: string; tick: number }) {
+  const toast = useToast();
+  const { data, reload, setData } = useApi<{ note: { id: string; content: string; updated_at: string } | null; updating: boolean; autoNotes: boolean }>(`/api/topics/${topicId}/notes`, {
+    poll: (d) => (d?.updating ? 2500 : 20000),
+  });
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (tick) reload();
+  }, [tick, reload]);
+  const preview = data?.note?.content.replace(/[#*>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 180);
+  return (
+    <Card>
+      <CardHeader
+        title="Your notes"
+        subtitle={data?.autoNotes === false ? "Automatic notes are off (Settings)" : "Written automatically as you chat"}
+        icon={<NotebookPen className="size-4" />}
+      />
+      <div className="space-y-3 p-4 pt-3">
+        {data?.updating ? (
+          <p className="flex items-center gap-2 text-xs text-primary-text">
+            <Loader2 className="size-3.5 animate-spin" /> Updating your notes…
+          </p>
+        ) : preview ? (
+          <p className="line-clamp-4 text-xs leading-relaxed text-text-2">{preview}…</p>
+        ) : (
+          <p className="text-xs text-muted">Ask the tutor something. A minute after you pause, your notes appear here.</p>
+        )}
+        <div className="flex gap-2">
+          {data?.note && (
+            <ButtonLink href={`/notes?id=${data.note.id}`} variant="secondary" size="sm" className="flex-1">
+              Open notes
+            </ButtonLink>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={busy}
+            icon={<RefreshCw className="size-3.5" />}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                setData(await api(`/api/topics/${topicId}/notes`, { method: "POST", json: { refresh: true } }));
+                toast("Notes updated");
+              } catch (e) {
+                toast((e as Error).message, "error");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Update now
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -263,6 +322,7 @@ function TutorInner() {
   const [preview, setPreview] = useState<SourceRef | null>(null);
   const [slidesOpen, setSlidesOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [notesTick, setNotesTick] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -330,6 +390,16 @@ function TutorInner() {
       if ((e as Error).name !== "AbortError") setErr(e instanceof ApiError ? e.message : (e as Error).message);
     } finally {
       setStreaming(null);
+    }
+  };
+
+  const saveToNotes = async (messageId: string) => {
+    try {
+      await api(`/api/topics/${topicId}/notes`, { method: "POST", json: { messageId } });
+      toast("Saved to your notes");
+      setNotesTick((t) => t + 1);
+    } catch (e) {
+      toast((e as Error).message, "error");
     }
   };
 
@@ -457,14 +527,21 @@ function TutorInner() {
                 ) : (
                   <div key={m.id} className="group">
                     <Markdown text={m.content} sources={m.sources} onCite={setPreview} />
-                    {m.generation_id && (
-                      <div className="mt-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                    {!m.id.startsWith("local-") && (
+                      <div className="mt-1.5 flex gap-1 opacity-60 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                        <button onClick={() => saveToNotes(m.id)} className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted hover:bg-surface-2 hover:text-primary-text" aria-label="Save to notes">
+                          <NotebookPen className="size-3.5" /> Save to notes
+                        </button>
+                        {m.generation_id && (
+                          <>
                         <button onClick={() => rate(m.generation_id!, 1)} className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-success" aria-label="Helpful">
                           <ThumbsUp className="size-3.5" />
                         </button>
                         <button onClick={() => rate(m.generation_id!, -1)} className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger" aria-label="Not helpful">
                           <ThumbsDown className="size-3.5" />
                         </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -552,6 +629,7 @@ function TutorInner() {
         </div>
 
         <aside className="space-y-4">
+          <NotesCard topicId={topicId} tick={notesTick} />
           <Card>
             <CardHeader title="Sources used" subtitle="From your course files" icon={<FileText className="size-4" />} />
             <div className="p-4 pt-3">{latestSources.length ? <SourceList sources={latestSources} onOpen={setPreview} /> : <p className="text-sm text-muted">Sources appear here once your tutor answers.</p>}</div>

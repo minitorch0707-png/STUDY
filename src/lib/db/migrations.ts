@@ -310,4 +310,24 @@ CREATE TABLE app_logs (
 );
 `,
   },
+  {
+    id: 4,
+    sql: `
+-- Study notes. "auto" notes (one per topic) are kept up to date from the tutor
+-- conversation; "manual" notes are written by the student.
+CREATE TABLE notes (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  topic_id TEXT REFERENCES topics(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'manual',   -- auto | manual
+  synced_until TEXT,                     -- last chat message folded into an auto note
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_notes_course ON notes(course_id, updated_at);
+CREATE UNIQUE INDEX idx_notes_auto_topic ON notes(topic_id) WHERE kind = 'auto';
+`,
+  },
 ];

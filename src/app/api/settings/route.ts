@@ -15,6 +15,7 @@ const schema = z.object({
   thinking: z.boolean().optional(),
   youtubeApiKey: z.string().max(200).optional(),
   describeImages: z.boolean().optional(),
+  autoNotes: z.boolean().optional(),
 });
 
 export const GET = handle(() => Response.json(publicSettings()));
