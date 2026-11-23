@@ -50,7 +50,7 @@ jobs:
           )"
           fi
 
-  # 2. Build each app and attach it to the draft.
+  # 2. Build each app and attach it to the draft (electron-builder uploads into an existing draft).
   build:
     needs: prepare
     strategy:
@@ -92,7 +92,6 @@ jobs:
           npx electron-builder ${{ matrix.target }} --publish always
           -c.publish.owner=${{ github.repository_owner }}
           -c.publish.repo=${{ github.event.repository.name }}
-          -c.publish.releaseType=draft
           -c.extraMetadata.version=${{ needs.prepare.outputs.version }}
 
   # 3. Both apps are attached: publish, so download links and updates switch to it.
