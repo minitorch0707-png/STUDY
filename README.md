@@ -4,101 +4,95 @@
 
 **Turn your lecture slides into a private AI tutor, practice exams and flashcards.**
 
-Runs on your own laptop with free, open-weight AI models. No subscriptions, and your course files never leave your computer.
+A free desktop app for Mac and Windows. The AI runs on *your* computer: no subscription, no account, and your course files never leave your laptop.
+
+### [⬇ Download for Mac](https://github.com/minitorch0707-png/lecturelab/releases/latest/download/LectureLab-Mac.dmg) &nbsp;·&nbsp; [⬇ Download for Windows](https://github.com/minitorch0707-png/lecturelab/releases/latest/download/LectureLab-Windows-Setup.exe)
+
+<sub>Mac: Apple Silicon (M1 or newer) · Windows 10/11 (64-bit) · 8 GB memory minimum, 16 GB recommended · ~6 GB free space</sub>
 
 ![LectureLab AI tutor teaching from lecture slides](docs/screenshots/ai-tutor-lesson.png)
 
 </div>
 
----
+## Get started in 3 steps
+
+1. **Download** the app for your computer using the links above.
+2. **Install it.**
+   - **Mac:** open the downloaded file and drag LectureLab into Applications. The first time you open it, macOS may say it can't verify the app. Go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
+   - **Windows:** run the installer. If you see "Windows protected your PC", click **More info → Run anyway**. You only do this once.
+3. **Click "Set everything up".** LectureLab downloads its free AI (about 4 GB, one time) and picks the right size for your computer. Then create a course and drop in your slides.
+
+That's it. No Terminal, no accounts. Updates arrive inside the app.
 
 ## What it does
-
-Upload your course files (PDF, PowerPoint, Word, notes). LectureLab reads them and gives you:
 
 | | |
 |---|---|
 | 🧑‍🏫 **AI Tutor**: lessons built from *your* slides. Every claim links back to the exact slide or page. Ask follow-ups, or hit *Explain simpler*, *Give me an example* or *Quiz me*. | ![Tutor](docs/screenshots/source-slide.png) |
-| 📝 **Practice exams**: multiple choice, true/false, short answer, essays and more. Written answers are graded against a clear rubric that shows what you missed. | ![Exam feedback](docs/screenshots/exam-written-feedback.png) |
-| 🃏 **Flashcards**: generated from your material, with spaced repetition so cards come back just before you'd forget them. | ![Flashcard](docs/screenshots/flashcard.png) |
-| 📅 **Study planner**: finds exam dates in your syllabus, then builds a day-by-day plan focused on your weakest topics. | ![Planner](docs/screenshots/study-plan.png) |
-| 📈 **Progress**: strengths and weaknesses per topic, based only on your real answers. | ![Progress](docs/screenshots/progress.png) |
+| 📝 **Practice exams**: multiple choice, true/false, short answer, essays and more, with clear rubric feedback that shows what you missed. | ![Exam feedback](docs/screenshots/exam-written-feedback.png) |
+| 🃏 **Flashcards**: made from your material, with spaced repetition so cards come back just before you'd forget them. | ![Flashcard](docs/screenshots/flashcard.png) |
+| 📅 **Study planner**: finds exam dates in your syllabus and builds a day-by-day plan around your weakest topics. | ![Planner](docs/screenshots/study-plan.png) |
+| 📈 **Progress**: strengths and weaknesses per topic, based on your real answers. | ![Progress](docs/screenshots/progress.png) |
 
-## Install (Mac)
+Works with **PDF, PowerPoint (.pptx), Word (.docx)** and notes. Got an old `.ppt`, a Keynote file or Google Slides? The app tells you exactly how to convert it.
 
-1. Open **Terminal**: press `⌘ Command` + `Space`, type `Terminal`, press `Return`.
-2. Paste this line and press `Return`:
+## Free and Pro
 
-   ```bash
-   bash -c "$(curl -fsSL https://raw.githubusercontent.com/minitorch0707-png/study/main/install.sh)"
-   ```
-
-3. Wait 5–20 minutes. Most of that time is downloading the ~3 GB AI model. LectureLab opens in your browser when it's ready.
-
-From then on, **double-click `LectureLab` on your Desktop** to start it. To update, run the same line again (your courses are kept).
-
-<details>
-<summary>Requirements and manual setup</summary>
-
-- A Mac with Apple Silicon (M1 or newer) and 8 GB+ of memory. 16 GB is recommended.
-- About 5 GB of free disk space.
-- Manual setup for developers: install [Node.js 22+](https://nodejs.org) and [Ollama](https://ollama.com), then run:
-
-  ```bash
-  ollama pull qwen3:4b && ollama pull nomic-embed-text
-  ```
-
-  ```bash
-  npm install && npm run build && npm start
-  ```
-
-  Then open http://127.0.0.1:3000.
-</details>
-
-## Project status
-
-LectureLab is an **early version (alpha)**. It's useful today, and rough in places.
-
-| Works well | Known limitations |
+| Free | Pro: $5 |
 |---|---|
-| PDF, PowerPoint (.pptx), Word (.docx), text and markdown files | Old `.ppt`/`.doc` and Keynote files must be re-saved as `.pptx`/`.docx` first |
-| Lessons, quizzes, flashcards, planner and progress | Scanned PDFs (photos of pages) can't be read yet |
-| Works offline. Keyword search and syllabus dates work even without AI | Answer quality depends on the small local model, so check the citations |
-| | Mac only for the one-step installer. Windows and Linux need the manual setup |
+| 2 courses with the AI tutor, quizzes, flashcards and progress | **Unlimited courses** |
+| Mark your own written answers with the rubric | **AI marks your written answers** |
+| | **Timed exam simulations** |
+| | **Study planner and Exam Cram** |
 
-Found a bug? [Open an issue](../../issues/new/choose) and include the error message.
-
-## How it works (in one picture)
-
-```
- Your files ──► Reader ──► slides/pages ──► Search index ──┐
- (PDF, PPTX, DOCX)        (keeps order,                     │  the most relevant slides
-                           tables, notes)                   ▼
-                                               Local AI model (Ollama + Qwen3)
-                                                            │
-                         lessons · quizzes · flashcards ◄───┘  every answer cites [slide #]
-```
-
-The AI never "learns" your files and is never retrained. Each time, LectureLab finds the most relevant slides and gives them to the model to read (a method called *retrieval-augmented generation*). That's why answers can cite the exact slide they came from.
-
-## Project map
-
-| Folder | What's inside |
-|---|---|
-| [`src/app`](src/app) | The pages you see (dashboard, tutor, exams…) and the server API (`src/app/api`) |
-| [`src/components`](src/components) | Reusable UI pieces: buttons, cards, the uploader, the sidebar |
-| [`src/lib/ingest`](src/lib/ingest) | Reads PDF, PowerPoint and Word files and splits them into slides/pages |
-| [`src/lib/rag`](src/lib/rag) | Search over your materials (keyword + meaning) |
-| [`src/lib/ai`](src/lib/ai) | Talks to the AI model. **All prompts are in [`prompts.ts`](src/lib/ai/prompts.ts)** |
-| [`src/lib/learning`](src/lib/learning) | Flashcard scheduling, mastery scores, grading and the study planner (plain logic, no AI) |
-| [`src/lib/services`](src/lib/services) | The features themselves, connecting everything above |
-| [`tests`](tests) | Automated tests (`npm test`) |
-| [`docs`](docs) | [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Business plan](docs/BUSINESS.md) |
-
-## Contributing
-
-Contributions are welcome! Start with **[CONTRIBUTING.md](CONTRIBUTING.md)**. It explains how to run the project, where to make changes, and how to check your work.
+Both run 100% on your computer. Unlock Pro from inside the app (**Settings → LectureLab Pro**).
 
 ## Privacy
 
-Everything (files, quizzes, progress) is stored in `~/LectureLab/data` on your computer. The AI runs locally. The only things sent over the internet are topic names, when you ask for YouTube or Wikipedia suggestions.
+Your files, quizzes and progress are stored only on your computer, and the AI runs there too. The only internet use: the one-time AI download, update checks, checking a Pro key, and (if you ask) finding YouTube or Wikipedia links for a topic.
+
+## Status
+
+LectureLab is **early (alpha)**: useful today and improving quickly. Scanned PDFs (photos of pages) can't be read yet. Answers come from a small local AI, so check the slide citations.
+
+Found a problem? In the app, open **Settings → Help & diagnostics → Copy diagnostics**, then [open an issue](https://github.com/minitorch0707-png/lecturelab/issues/new/choose) and paste it in.
+
+---
+
+## For developers
+
+<details>
+<summary><b>Run from source</b></summary>
+
+Requires [Node.js 22](https://nodejs.org). The app installs its own AI engine on first run, or uses [Ollama](https://ollama.com) if you already have it.
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+Open http://127.0.0.1:3000. To run the desktop app from source: `npm install --prefix desktop`, then `npm run desktop:start`.
+
+```bash
+npm run typecheck && npm run lint && npm test
+```
+
+</details>
+
+| Folder | What's inside |
+|---|---|
+| [`src/app`](src/app) | Pages (dashboard, tutor, exams…) and the local API (`src/app/api`) |
+| [`src/components`](src/components) | UI building blocks |
+| [`src/lib/ingest`](src/lib/ingest) | Reads PDF, PowerPoint and Word files |
+| [`src/lib/rag`](src/lib/rag) | Search over your materials |
+| [`src/lib/ai`](src/lib/ai) | Talks to the AI. **All prompts are in [`prompts.ts`](src/lib/ai/prompts.ts)** |
+| [`src/lib/engine.ts`](src/lib/engine.ts) | Downloads and runs the private AI engine |
+| [`src/lib/learning`](src/lib/learning) | Flashcard scheduling, mastery scores, grading, planner |
+| [`src/lib/product.ts`](src/lib/product.ts) | **Price, store and Free vs Pro settings** |
+| [`desktop`](desktop) | The Mac/Windows app shell (Electron) |
+| [`docs`](docs) | [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Selling Pro](docs/SELLING.md) · [Releasing](docs/RELEASING.md) · [Business plan](docs/BUSINESS.md) |
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).

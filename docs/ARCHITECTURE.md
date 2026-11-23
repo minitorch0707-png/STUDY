@@ -19,6 +19,25 @@
 
 ## 2. How it fits together
 
+**As a desktop app** (what students download), the Electron shell in `desktop/` does three things:
+
+1. Starts the LectureLab server (the same Next.js app, built in "standalone" mode) using a **private copy of Node.js bundled inside the app**.
+2. Opens a window pointing at it.
+3. Checks for updates.
+
+On first run, the `/setup` screen asks the server to download **Ollama** (open source) into the app's data folder (`src/lib/engine.ts`). The server runs Ollama on a private port (11435), then downloads the model that fits the computer's memory. If the student already runs Ollama on its usual port, that one is used instead.
+
+```
+LectureLab.app / LectureLab.exe (Electron)
+  ├─ bundled Node.js ──► LectureLab server (Next.js standalone) ──► SQLite + files in the app data folder
+  │                                   └─ starts ──► private Ollama (downloaded on first run) ──► AI models
+  └─ window ──► http://127.0.0.1:47321 (local only)
+```
+
+Pro licences (`src/lib/license.ts`, configured in `src/lib/product.ts`) are checked directly against the Lemon Squeezy or Gumroad licence APIs, with a 30-day offline grace period. The server enforces Pro limits, so they can't be bypassed from the browser.
+
+**Inside the server:**
+
 ```
 Browser (React pages in src/app)
    │  fetch / streaming NDJSON
@@ -80,7 +99,9 @@ Deleting a course removes all of its rows (via cascading deletes) and its folder
 - Each AI call is logged in `ai_generations` with the task, prompt, output, time and the student's 👍/👎 rating. Settings shows per-task counts, average times and ratings, and has a benchmark that measures speed (tokens per second) and whether the model follows citation instructions.
 - **Recommended order:** (1) gather a baseline with `qwen3:4b`; (2) build a small evaluation set (around 50 lessons and 100 questions rated against your slides); (3) try a better prompt or a larger model (`qwen3:8b`) first; (4) only if gaps remain, export highly rated generations as a dataset and train a LoRA adapter (MLX-LM runs well on Apple Silicon). The adapter loads into Ollama through a Modelfile `ADAPTER` line, so no application code changes.
 
-## 7. Launching publicly for hundreds of students
+## 7. If a hosted (website) version is ever wanted
+
+The current plan is local-only: each student's computer runs everything, so there are no server costs. If a website version is wanted later:
 
 | Area | Local version (now) | Public version |
 |---|---|---|

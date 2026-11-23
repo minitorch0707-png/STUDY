@@ -31,6 +31,8 @@ ollama pull qwen3:4b && ollama pull nomic-embed-text
 | Make the AI tutor teach differently | `src/lib/ai/prompts.ts` |
 | Fix how a PowerPoint/PDF/Word file is read | `src/lib/ingest/parsers/` |
 | Change flashcard scheduling or mastery scores | `src/lib/learning/` |
+| Change the price, store, or Free vs Pro | `src/lib/product.ts` |
+| Change the desktop app (window, menus, updates) | `desktop/main.js` (run it with `npm install --prefix desktop` then `npm run desktop:start`) |
 | Add a database field | add a **new** migration at the end of `src/lib/db/migrations.ts` (never edit old ones) |
 
 ## 3. Check your work

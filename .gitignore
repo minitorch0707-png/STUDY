@@ -48,3 +48,8 @@ tsconfig.tsbuildinfo
 
 # Local walkthrough recordings (large)
 /demo/
+
+# Desktop app build outputs
+/desktop/node_modules/
+/desktop/dist/
+/desktop/resources/

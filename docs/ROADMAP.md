@@ -4,14 +4,13 @@ Items marked ✅ are done. The next milestone is at the top. Want to help? Pick 
 
 ## Milestone 1: Reliable on real student files (now)
 
+- [x] Fix uploads being blocked in some browsers, and allow every file type to be picked (with conversion tips)
 - [x] Read real PowerPoint files (tested against decks made in PowerPoint, with notes, nested bullets and merged table cells)
 - [x] Accept large, photo-heavy decks (up to 250 MB)
 - [x] Clear guidance for `.ppt`, `.doc`, Keynote and Pages files
 - [x] Tolerate small-model output quirks (numbers sent as text)
 - [ ] Read scanned PDFs (render each page and send it to the vision model for text recognition)
 - [ ] Convert `.ppt` automatically when LibreOffice is installed
-- [ ] "Report a problem file" button that saves a diagnostic summary (no content) to attach to an issue
-- [ ] Windows installer
 
 ## Milestone 2: Better teaching quality
 
@@ -21,15 +20,16 @@ Items marked ✅ are done. The next milestone is at the top. Want to help? Pick 
 - [ ] Interactive concept map built from topics and keywords
 - [ ] Export a study guide (PDF) per topic or per exam
 
-## Milestone 3: Hosted version (needed before charging money; see [BUSINESS.md](BUSINESS.md))
+## Milestone 3: Desktop app and Pro (done ✅)
 
-- [ ] Accounts and login (Supabase Auth)
-- [ ] Move data to Postgres + pgvector with row-level security, so students can never see each other's data
-- [ ] File storage in private buckets
-- [ ] Hosted open-weight model inference (vLLM, or a hosted API) via the existing OpenAI-compatible provider
-- [ ] Usage limits per plan
-- [ ] Stripe billing (checkout, customer portal, webhooks)
-- [ ] Privacy policy, terms of service, data deletion
+- [x] Mac and Windows desktop app, built and published automatically by GitHub Actions
+- [x] One-click AI setup: downloads a private AI engine and the right model for the computer's memory
+- [x] Pro licence keys (Lemon Squeezy or Gumroad), with no server needed
+- [x] Update notifications (automatic install on Windows)
+- [x] Help & diagnostics screen with "Copy diagnostics"
+- [ ] Configure the store and price in `src/lib/product.ts` (see [SELLING.md](SELLING.md))
+- [ ] Apple Developer ID and Windows signing, to remove the first-launch warnings
+- [ ] Intel Mac build
 
 ## Milestone 4: Social and advanced
 

@@ -1,0 +1,69 @@
+# Builds the LectureLab desktop apps and publishes them as a GitHub Release.
+#
+# To release a new version, push a tag:   git tag v0.3.0 && git push origin v0.3.0
+# (or use Actions → Release → "Run workflow"). Free for public repositories.
+# Installed apps check this Release page for updates.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, e.g. 0.3.0 (a matching v-tag will be created)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14 # Apple Silicon (M1 and newer)
+            target: --mac
+          - os: windows-latest
+            target: --win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # must match NODE_VERSION's major in scripts/prepare-desktop.mjs
+          cache: npm
+
+      - name: Work out the version
+        id: v
+        shell: bash
+        run: |
+          V="${{ github.event.inputs.version }}"
+          [ -z "$V" ] && V="${GITHUB_REF_NAME#v}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        shell: bash
+        run: |
+          npm ci
+          npm ci --prefix desktop
+          npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version --prefix desktop
+          npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Build server and bundle Node.js
+        run: npm run desktop:prepare
+
+      - name: Package and publish
+        working-directory: desktop
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Without an Apple Developer ID the Mac app is ad-hoc signed (see docs/RELEASING.md).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: >
+          npx electron-builder ${{ matrix.target }} --publish always
+          -c.publish.owner=${{ github.repository_owner }}
+          -c.publish.repo=${{ github.event.repository.name }}
+          -c.extraMetadata.version=${{ steps.v.outputs.version }}

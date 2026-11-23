@@ -1,0 +1,59 @@
+# Packaging settings for the LectureLab desktop app (Mac + Windows).
+# Built automatically by GitHub Actions when a version tag (v1.2.3) is pushed;
+# see .github/workflows/release.yml and docs/RELEASING.md.
+appId: app.lecturelab.desktop
+productName: LectureLab
+copyright: Copyright © LectureLab
+directories:
+  output: dist
+  buildResources: build
+files:
+  - main.js
+  - preload.js
+  - splash.html
+  - package.json
+  - node_modules/**/*
+# The LectureLab server (Next.js standalone build) is copied in by afterPack.js,
+# because electron-builder always skips node_modules folders in extraResources.
+afterPack: ./afterPack.js
+extraResources:
+  # A private copy of Node.js that runs the server.
+  - from: resources/node
+    to: node
+    filter: ["**/*"]
+asar: true
+mac:
+  category: public.app-category.education
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+  # "-" = ad-hoc signature (free). With a paid Apple Developer ID, remove this
+  # line and set CSC_LINK / CSC_KEY_PASSWORD secrets; see docs/RELEASING.md.
+  identity: "-"
+  hardenedRuntime: false
+  artifactName: LectureLab-Mac.${ext}
+dmg:
+  title: LectureLab
+  artifactName: LectureLab-Mac.${ext}
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: LectureLab-Windows-Setup.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+  shortcutName: LectureLab
+linux:
+  executableName: lecturelab
+  target: [AppImage]
+  category: Education
+  artifactName: LectureLab-Linux.${ext}
+publish:
+  - provider: github
+    owner: minitorch0707-png
+    repo: lecturelab
+    releaseType: release

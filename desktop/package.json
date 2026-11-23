@@ -1,0 +1,21 @@
+{
+  "name": "lecturelab-desktop",
+  "productName": "LectureLab",
+  "version": "0.2.0",
+  "description": "Your private AI study partner — lessons, practice exams and flashcards from your own lecture slides.",
+  "author": "LectureLab",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  }
+}
