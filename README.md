@@ -9,39 +9,29 @@ LectureLab turns your lecture slides, readings and syllabi into structured lesso
 - **Study planner**: exam dates detected from your syllabus (you confirm them), day-by-day plans and an Exam Cram mode.
 - **Progress**: mastery per topic, calculated only from your real answers.
 
-## Run it on your Mac (about 10 minutes)
+## Install on your Mac (one step)
 
-1. **Install Node.js 22 or later** from <https://nodejs.org>.
-2. **Install Ollama** from <https://ollama.com/download> and open it. It runs in the menu bar.
-3. **Download the AI models.** You can do this from LectureLab's Settings page, or in Terminal:
-
-   ```bash
-   ollama pull qwen3:4b
-   ```
+1. Open **Terminal**: press `⌘ Command` + `Space`, type `Terminal`, press `Return`.
+2. Copy this line, paste it into Terminal, and press `Return`:
 
    ```bash
-   ollama pull nomic-embed-text
+   bash -c "$(curl -fsSL https://raw.githubusercontent.com/minitorch0707-png/study/main/install.sh)"
    ```
 
-   Optional, to describe diagrams on slides:
+3. Wait. It installs everything (Node.js, LectureLab, the Ollama AI app and the AI models, about 3 GB in total) and opens LectureLab in your browser when it's finished. The model download is the slowest part (usually 5–15 minutes). If Ollama shows a welcome window, click through it.
 
-   ```bash
-   ollama pull gemma3:4b
-   ```
+After that, **double-click `LectureLab` on your Desktop** whenever you want to study. Keep the Terminal window it opens running while you use the app; close it to stop.
 
-4. **Install and start LectureLab** from this folder:
+- To **update**, run the same line again. Your courses and progress are kept.
+- Everything goes into a `LectureLab` folder in your home folder. Your data is in `~/LectureLab/data`.
+- No admin password is needed. The only thing installed outside that folder is the Ollama app (into Applications).
 
-   ```bash
-   npm install
-   ```
+<details>
+<summary>Manual setup (for developers)</summary>
 
-   ```bash
-   npm run build && npm start
-   ```
+Install Node.js 22+ and Ollama, then run `ollama pull qwen3:4b`, `ollama pull nomic-embed-text`, `npm install`, `npm run build && npm start`, and open http://127.0.0.1:3000. Use `npm run dev` for live reload.
 
-   Then open <http://127.0.0.1:3000>. For development with live reload, use `npm run dev`.
-
-The disk space needed is about 3 GB for the models plus your course files. While a model is answering, it uses about 4–5 GB of memory; after 15 minutes without use it is unloaded automatically.
+</details>
 
 ### Optional: YouTube videos
 
@@ -49,7 +39,7 @@ Paste a free YouTube Data API v3 key in **Settings → YouTube videos** (the pag
 
 ## Where your data lives
 
-Everything is stored in the `data/` folder: the `lecturelab.db` database and `uploads/`. To back up, copy that folder. To start fresh, delete it. The app only listens on `127.0.0.1`, so other devices on your Wi-Fi can't open it.
+Everything is stored in one folder: `~/LectureLab/data` with the one-step installer, or `data/` in the project folder for a manual setup. It holds the `lecturelab.db` database and `uploads/`. To back up, copy that folder. To start fresh, delete it. The app only listens on `127.0.0.1`, so other devices on your Wi-Fi can't open it.
 
 ## For developers
 
