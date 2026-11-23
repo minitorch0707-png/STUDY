@@ -109,6 +109,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v${{ needs.prepare.outputs.version }}"
-          ASSETS=$(gh release view "$TAG" -R "${{ github.repository }}" --json assets --jq '[.assets[].name | select(endswith(".exe") or endswith(".dmg"))] | length')
-          if [ "$ASSETS" = "0" ]; then echo "No installers were built — not publishing."; exit 1; fi
-          gh release edit "$TAG" -R "${{ github.repository }}" --draft=false --latest
+          NAMES=$(gh release view "$TAG" -R "${{ github.repository }}" --json assets --jq '[.assets[].name] | join(" ")')
+          HAS_MAC=$(echo "$NAMES" | grep -c "LectureLab-Mac.dmg" || true)
+          HAS_WIN=$(echo "$NAMES" | grep -c "LectureLab-Windows-Setup.exe" || true)
+          if [ "$HAS_MAC" = "0" ] && [ "$HAS_WIN" = "0" ]; then echo "No installers were built — not publishing."; exit 1; fi
+          if [ "$HAS_MAC" != "0" ] && [ "$HAS_WIN" != "0" ]; then
+            gh release edit "$TAG" -R "${{ github.repository }}" --draft=false --latest
+          else
+            # Only one platform built. Publish it, but keep the previous complete release as
+            # "latest" so neither download link breaks. Re-run the failed job to finish.
+            gh release edit "$TAG" -R "${{ github.repository }}" --draft=false --latest=false
+            echo "::warning::Only one installer was built. Use 'Re-run failed jobs' to add the other; the release becomes 'latest' then."
+          fi
