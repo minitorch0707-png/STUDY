@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens. Light theme by default; .dark on <html> switches to dark. */
+:root {
+  --bg: #f7f7fb;
+  --surface: #ffffff;
+  --surface-2: #f1f2f7;
+  --surface-3: #e8eaf2;
+  --border: #e3e5ee;
+  --border-strong: #cfd3e0;
+  --text: #171a2b;
+  --text-2: #4a4f66;
+  --muted: #6e7389;
+  --primary: #5b5bd6;
+  --primary-hover: #4c4cc4;
+  --primary-soft: #ececfd;
+  --primary-text: #4343b8;
+  --success: #15935a;
+  --success-soft: #e3f6ec;
+  --warning: #b36b00;
+  --warning-soft: #fdf1dc;
+  --danger: #d1344b;
+  --danger-soft: #fde8eb;
+  --ring: #8b8bf0;
+  --shadow: 0 1px 2px rgb(20 22 40 / 0.04), 0 2px 8px rgb(20 22 40 / 0.04);
+  --shadow-lg: 0 10px 40px -10px rgb(20 22 40 / 0.18);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0d0f17;
+  --surface: #141722;
+  --surface-2: #1b1f2d;
+  --surface-3: #242939;
+  --border: #252a3a;
+  --border-strong: #353b50;
+  --text: #ecedf5;
+  --text-2: #b7bacb;
+  --muted: #8c90a5;
+  --primary: #7c7cf0;
+  --primary-hover: #8f8ff4;
+  --primary-soft: #23244a;
+  --primary-text: #b4b4fb;
+  --success: #3ccf8e;
+  --success-soft: #12301f;
+  --warning: #f0b14a;
+  --warning-soft: #33270f;
+  --danger: #f2687c;
+  --danger-soft: #3a161d;
+  --ring: #7c7cf0;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 16px 48px -12px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-text: var(--primary-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Subtle entrance animation */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+/* Flashcard flip */
+.flip-scene {
+  perspective: 1400px;
+}
+.flip-card {
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.flip-card.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+/* Lesson / tutor markdown */
+.prose-ll {
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 0.97rem;
+}
+.prose-ll > * + * {
+  margin-top: 0.8em;
+}
+.prose-ll h1,
+.prose-ll h2 {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin-top: 1.6em;
+  letter-spacing: -0.01em;
+}
+.prose-ll h3 {
+  font-size: 1.02rem;
+  font-weight: 650;
+  margin-top: 1.3em;
+}
+.prose-ll h2:first-child,
+.prose-ll h1:first-child {
+  margin-top: 0;
+}
+.prose-ll ul {
+  list-style: disc;
+  padding-left: 1.3em;
+}
+.prose-ll ol {
+  list-style: decimal;
+  padding-left: 1.3em;
+}
+.prose-ll li + li {
+  margin-top: 0.3em;
+}
+.prose-ll strong {
+  font-weight: 650;
+}
+.prose-ll code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+}
+.prose-ll pre {
+  background: var(--surface-2);
+  padding: 0.9em 1em;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.prose-ll pre code {
+  background: none;
+  padding: 0;
+}
+.prose-ll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  display: block;
+  overflow-x: auto;
+}
+.prose-ll th,
+.prose-ll td {
+  border: 1px solid var(--border);
+  padding: 0.45em 0.7em;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-ll th {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+.prose-ll blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 1em;
+  color: var(--text-2);
+}
+.prose-ll a {
+  color: var(--primary-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-ll .beyond {
+  background: var(--warning-soft);
+  border-radius: 10px;
+  padding: 0.7em 0.9em;
+}
