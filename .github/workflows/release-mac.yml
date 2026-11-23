@@ -1,0 +1,70 @@
+# Backup Mac build. Use it when the main Release workflow's Mac job can't get a
+# GitHub Apple Silicon machine ("job was not acquired"). It builds the same
+# Apple Silicon app on an Intel Mac runner and adds it to an existing release.
+#
+# Actions → "Release (Mac backup)" → Run workflow → enter the version (e.g. 0.3.0).
+name: Release (Mac backup)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release version to add the Mac app to, e.g. 0.3.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-15-intel
+    env:
+      LECTURELAB_TARGET_ARCH: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        shell: bash
+        run: |
+          npm ci
+          npm ci --prefix desktop
+          npm version "${{ github.event.inputs.version }}" --no-git-tag-version --allow-same-version --prefix desktop
+          npm version "${{ github.event.inputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Build server and bundle Node.js (arm64)
+        run: npm run desktop:prepare
+
+      - name: Swap in the Apple Silicon database library (after building, which needs the Intel one)
+        run: |
+          cd .next/standalone/node_modules/better-sqlite3
+          npx --yes prebuild-install@7 --platform darwin --arch arm64 --runtime node --target 22.23.5
+
+      - name: Check the bundle is Apple Silicon
+        run: |
+          file desktop/resources/node/node | grep -q arm64
+          file .next/standalone/node_modules/better-sqlite3/build/Release/better_sqlite3.node | grep -q arm64
+
+      - name: Package and upload
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          EP_GH_IGNORE_TIME: "true"
+        run: >
+          npx electron-builder --mac --arm64 --publish always
+          -c.publish.owner=${{ github.repository_owner }}
+          -c.publish.repo=${{ github.event.repository.name }}
+          -c.extraMetadata.version=${{ github.event.inputs.version }}
+
+      - name: Mark as latest when complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ github.event.inputs.version }}"
+          NAMES=$(gh release view "$TAG" -R "${{ github.repository }}" --json assets --jq '[.assets[].name] | join(" ")')
+          if echo "$NAMES" | grep -q "LectureLab-Windows-Setup.exe"; then gh release edit "$TAG" -R "${{ github.repository }}" --latest; fi

@@ -23,7 +23,8 @@ fs.cpSync(path.join(root, "public"), path.join(standalone, "public"), { recursiv
 fs.rmSync(path.join(standalone, "data"), { recursive: true, force: true });
 
 const plat = process.platform === "win32" ? "win" : process.platform;
-const arch = process.arch;
+// LECTURELAB_TARGET_ARCH lets an Intel Mac build the Apple Silicon app (see release-mac.yml).
+const arch = process.env.LECTURELAB_TARGET_ARCH || process.arch;
 const nodeDir = path.join(root, "desktop", "resources", "node");
 const exe = process.platform === "win32" ? "node.exe" : "node";
 if (fs.existsSync(path.join(nodeDir, exe)) && fs.readFileSync(path.join(nodeDir, ".version"), "utf8").trim() === `${NODE_VERSION}-${plat}-${arch}`) {

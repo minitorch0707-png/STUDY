@@ -10,7 +10,7 @@ New versions are built automatically by GitHub (free for public repositories) an
 
 (Developers can also push a tag: `git tag v0.3.0 && git push origin v0.3.0`.)
 
-**If the Mac (or Windows) build fails or gets stuck:** GitHub sometimes runs short of Mac machines. The release is still published with whichever app built. Open the run in **Actions** and click **Re-run failed jobs** later; the missing app is added to the same release.
+**If the Mac build fails or gets stuck** (GitHub sometimes runs short of Apple Silicon Macs): the Windows app is still published, and the previous complete release stays the download link. Either click **Re-run failed jobs** on the run later, or run **Actions → Release (Mac backup) → Run workflow** with the same version. It builds the Mac app on a different machine type.
 
 The download links in the README always point to the latest release, so they never need changing.
 
