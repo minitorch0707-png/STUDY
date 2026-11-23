@@ -168,7 +168,8 @@ export async function processDocument(id: string) {
   try {
     setStatus(id, "parsing", "Reading the file…", 0.1);
     const buf = fs.readFileSync(filePath(doc));
-    const parsed = await parseDocument(doc.ext, buf);
+    const s = getSettings();
+    const parsed = await parseDocument(doc.ext, buf, { withImages: s.describeImages && Boolean(s.visionModel) });
     warnings.push(...parsed.warnings);
     if (!parsed.sections.some((s) => s.hasText)) {
       db().prepare("UPDATE documents SET warnings = ? WHERE id = ?").run(JSON.stringify(warnings), id);

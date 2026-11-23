@@ -21,17 +21,20 @@ export const quizConfigSchema = z.object({
 });
 export type QuizConfig = z.infer<typeof quizConfigSchema>;
 
+/** "2" → 2, but null/undefined stay missing (so an incomplete question is rejected, not guessed). */
+export const numericString = (v: unknown) => (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v)) ? Number(v) : v);
+
 const questionSchema = z.object({
   questions: z.array(
     z.object({
       type: z.enum(QUESTION_TYPES),
       prompt: z.string().min(8).max(2000),
       options: z.array(z.string()).nullable().optional(),
-      correctIndex: z.number().int().nullable().optional(),
-      correctBoolean: z.boolean().nullable().optional(),
+      correctIndex: z.preprocess(numericString, z.number().int().nullable().optional()),
+      correctBoolean: z.preprocess((v) => (typeof v === "string" ? v.toLowerCase() === "true" : v), z.boolean().nullable().optional()),
       pairs: z.array(z.object({ left: z.string(), right: z.string() })).nullable().optional(),
       modelAnswer: z.string().nullable().optional(),
-      rubric: z.array(z.string()).nullable().optional(),
+      rubric: z.array(z.union([z.string(), z.object({ point: z.string() }).transform((r) => r.point)])).nullable().optional(),
       explanation: z.string().default(""),
       sourceId: z.string().nullable().optional(),
       difficulty: z.string().nullable().optional(),

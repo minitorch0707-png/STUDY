@@ -92,7 +92,8 @@ export async function generateJson<T>(
   attempts = 2,
 ): Promise<T> {
   const llm = getLLM();
-  const jsonSchema = z.toJSONSchema(schema) as Record<string, unknown>;
+  // "input" mode describes what the model should send (before our clean-up transforms run).
+  const jsonSchema = z.toJSONSchema(schema, { io: "input" }) as Record<string, unknown>;
   delete jsonSchema.$schema;
   let messages = req.messages;
   let lastError: unknown;

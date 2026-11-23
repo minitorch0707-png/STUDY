@@ -5,6 +5,7 @@ import { generateJson, getLLM, requireChatModel } from "@/lib/ai";
 import { QUICK_ACTIONS, SOCRATIC_ADDON, TUTOR_SYSTEM, adaptiveNote, checksPrompt, lessonPrompt } from "@/lib/ai/prompts";
 import { formatSources, retrieve, type SourceRef } from "@/lib/rag/retrieve";
 import { seededShuffle } from "@/lib/learning/grading";
+import { numericString } from "./quiz";
 import { getSettings } from "@/lib/settings";
 import { logGeneration } from "./generations";
 import { getTopic, recordEvent, topicSectionIds } from "./topics";
@@ -107,7 +108,7 @@ const checksSchema = z.object({
       z.object({
         question: z.string().min(5),
         options: z.array(z.string().min(1)).length(4),
-        correctIndex: z.number().int().min(0).max(3),
+        correctIndex: z.preprocess(numericString, z.number().int().min(0).max(3)),
         explanation: z.string().default(""),
       }),
     )

@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import path from "node:path";
-import type { ParsedDocument, ParsedSection, ExtractedImage } from "../types";
+import type { ParsedDocument, ParsedSection, ExtractedImage, ParseOptions } from "../types";
 import { allMatches, attr, decodeXmlEntities, markdownTable } from "../xml";
 
 /**
@@ -60,7 +60,7 @@ function resolveTarget(fromFile: string, target: string) {
   return path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), target));
 }
 
-export async function parsePptx(buf: Buffer): Promise<ParsedDocument> {
+export async function parsePptx(buf: Buffer, opts: ParseOptions = {}): Promise<ParsedDocument> {
   const zip = await JSZip.loadAsync(buf);
   const read = (p: string) => zip.file(p)?.async("string");
   const warnings: string[] = [];
@@ -136,7 +136,9 @@ export async function parsePptx(buf: Buffer): Promise<ParsedDocument> {
       if (!f) continue;
       const ext = path.extname(p).slice(1).toLowerCase();
       if (!["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) continue;
-      images.push({ name: path.basename(p), mime: `image/${ext === "jpg" ? "jpeg" : ext}`, data: Buffer.from(await f.async("uint8array")) });
+      // Image bytes are only read when they'll be described; otherwise we just count them (saves memory on big decks).
+      const data = opts.withImages ? Buffer.from(await f.async("uint8array")) : Buffer.alloc(0);
+      images.push({ name: path.basename(p), mime: `image/${ext === "jpg" ? "jpeg" : ext}`, data });
     }
 
     const content = body.join("\n").trim();

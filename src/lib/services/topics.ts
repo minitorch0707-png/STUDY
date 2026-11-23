@@ -70,14 +70,15 @@ const topicSchema = z.object({
     .array(
       z.object({
         title: z.string().min(2).max(120),
-        summary: z.string().max(600).default(""),
-        objectives: z.array(z.string().max(250)).max(6).default([]),
-        keywords: z.array(z.string().max(60)).max(8).default([]),
-        sections: z.array(z.number().int()).max(80).default([]),
-        importance: z.number().int().min(1).max(3).default(2),
+        summary: z.string().default("").transform((x) => x.slice(0, 600)),
+        objectives: z.array(z.string()).default([]).transform((a) => a.slice(0, 6).map((x) => x.slice(0, 250))),
+        keywords: z.array(z.string()).default([]).transform((a) => a.slice(0, 8).map((x) => x.slice(0, 60))),
+        // Small models sometimes send numbers as strings ("3") — accept both.
+        sections: z.array(z.coerce.number().int()).default([]),
+        importance: z.coerce.number().int().min(1).max(3).catch(2),
       }),
     )
-    .max(12),
+    .transform((a) => a.slice(0, 12)),
 });
 
 /**

@@ -2,7 +2,7 @@ import { parseDocx } from "./parsers/docx";
 import { parsePdf } from "./parsers/pdf";
 import { parsePptx } from "./parsers/pptx";
 import { parseText } from "./parsers/text";
-import { MAX_UPLOAD_BYTES, SUPPORTED_EXTENSIONS, type ParsedDocument, type SupportedExt } from "./types";
+import { MAX_UPLOAD_BYTES, SUPPORTED_EXTENSIONS, type ParseOptions, type ParsedDocument, type SupportedExt } from "./types";
 
 export function extensionOf(filename: string): string {
   return (filename.split(".").pop() ?? "").toLowerCase();
@@ -14,6 +14,14 @@ export function extensionOf(filename: string): string {
  */
 export function validateUpload(filename: string, buf: Buffer): { ok: true; ext: SupportedExt } | { ok: false; error: string } {
   const ext = extensionOf(filename);
+  const resave: Record<string, string> = {
+    ppt: "an old PowerPoint file (.ppt). Open it in PowerPoint or Keynote and choose File → Save As / Export → .pptx, then upload that",
+    doc: "an old Word file (.doc). Open it in Word or Pages and save it as .docx, then upload that",
+    key: "a Keynote file. In Keynote choose File → Export To → PowerPoint (or PDF), then upload that",
+    pages: "a Pages file. In Pages choose File → Export To → Word (or PDF), then upload that",
+    odp: "an OpenDocument presentation. Save it as .pptx or PDF, then upload that",
+  };
+  if (resave[ext]) return { ok: false, error: `"${filename}" is ${resave[ext]}.` };
   if (!(SUPPORTED_EXTENSIONS as readonly string[]).includes(ext)) {
     return { ok: false, error: `"${filename}" isn't supported. Upload PDF, PowerPoint (.pptx), Word (.docx), or text (.txt, .md) files.` };
   }
@@ -41,12 +49,12 @@ export function validateUpload(filename: string, buf: Buffer): { ok: true; ext: 
   return { ok: true, ext: ext as SupportedExt };
 }
 
-export async function parseDocument(ext: SupportedExt, buf: Buffer): Promise<ParsedDocument> {
+export async function parseDocument(ext: SupportedExt, buf: Buffer, opts: ParseOptions = {}): Promise<ParsedDocument> {
   switch (ext) {
     case "pdf":
       return parsePdf(buf);
     case "pptx":
-      return parsePptx(buf);
+      return parsePptx(buf, opts);
     case "docx":
       return parseDocx(buf);
     case "txt":

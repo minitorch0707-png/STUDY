@@ -13,7 +13,7 @@
 | Vision model | `gemma3:4b`, optional | Describes diagrams and images in PPTX/DOCX files during upload. |
 | Embeddings | `nomic-embed-text` (274 MB) | Small, strong retrieval quality, uses task prefixes. |
 | Vector search | Float32 vectors in SQLite + in-memory cosine similarity, behind a `VectorStore` interface | A student's materials are a few thousand chunks, so a search takes milliseconds. A separate vector database would add setup without benefit. The interface allows moving to pgvector later. |
-| Tests | Vitest | 32 tests covering core logic and the end-to-end backend flow. |
+| Tests | Vitest | 43 tests covering core logic, real PowerPoint files and the end-to-end backend flow. |
 
 **Why I didn't use Supabase yet:** it needs accounts, network access and authentication setup. For a private, single-user, local-first app, SQLite is simpler and fully private. Supabase (Postgres + pgvector + Auth + Storage) is the planned path for a public launch (section 7).
 

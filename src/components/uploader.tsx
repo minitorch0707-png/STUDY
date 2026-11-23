@@ -6,7 +6,7 @@ import { cn, ProgressBar } from "./ui";
 import { formatBytes } from "@/lib/client";
 
 const ACCEPT = ".pdf,.pptx,.docx,.txt,.md";
-const MAX = 50 * 1024 * 1024;
+const MAX = 250 * 1024 * 1024;
 
 interface UploadResult {
   ok: boolean;
@@ -28,11 +28,17 @@ export function Uploader({ courseId, onUploaded, compact }: { courseId: string; 
     const ok = files.filter((f) => {
       const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
       if (!["pdf", "pptx", "docx", "txt", "md"].includes(ext)) {
-        errs.push(`${f.name}: ${ext === "ppt" || ext === "doc" ? "old Office format — re-save as .pptx/.docx" : "unsupported file type"}`);
+        const hint: Record<string, string> = {
+          ppt: "old PowerPoint format — open it and Save As .pptx",
+          doc: "old Word format — open it and Save As .docx",
+          key: "Keynote file — use File → Export To → PowerPoint",
+          pages: "Pages file — use File → Export To → Word or PDF",
+        };
+        errs.push(`${f.name}: ${hint[ext] ?? "unsupported file type (use PDF, .pptx, .docx, .txt or .md)"}`);
         return false;
       }
       if (f.size > MAX) {
-        errs.push(`${f.name}: larger than 50 MB`);
+        errs.push(`${f.name}: larger than 250 MB — try exporting it as PDF`);
         return false;
       }
       return true;
@@ -99,7 +105,7 @@ export function Uploader({ courseId, onUploaded, compact }: { courseId: string; 
           {drag ? "Drop to upload" : "Drag files here, or "}
           {!drag && <span className="text-primary-text underline underline-offset-2">browse</span>}
         </p>
-        <p className="mt-1 text-xs text-muted">PDF, PowerPoint (.pptx), Word (.docx), text or markdown · up to 50 MB each</p>
+        <p className="mt-1 text-xs text-muted">PDF, PowerPoint (.pptx), Word (.docx), text or markdown · up to 250 MB each</p>
         <input ref={input} type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => e.target.files && upload([...e.target.files])} />
       </div>
       {progress && (
