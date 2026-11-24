@@ -9,7 +9,7 @@
 | Database | SQLite (`better-sqlite3`) in `data/lecturelab.db` | One file, no server to run, very fast for a single student. Schema migrations are in `src/lib/db/migrations.ts`. |
 | File storage | Local `data/uploads/<courseId>/` | Private by default. Files are validated by extension *and* by their actual bytes. |
 | AI inference | **Ollama** behind a provider interface | Free, local and private. A second provider supports any OpenAI-compatible server (LM Studio, llama.cpp, vLLM, hosted open-weight APIs). |
-| Chat model | `qwen3:4b` (Q4, ~2.5 GB) | The best quality-to-size ratio for 16 GB of memory, and good at producing structured JSON. "Thinking" mode is optional. |
+| Chat model | `qwen3:4b-instruct-2507-q4_K_M` (Q4, ~2.5 GB) | The non-thinking 2507 update of Qwen3 4B: answers start straight away instead of after a hidden reasoning step. Best quality-to-size ratio for 16 GB of memory. "Quick replies" (default) keeps answers short so they finish fast. |
 | Vision model | `gemma3:4b`, optional | Describes diagrams and images in PPTX/DOCX files during upload. |
 | Embeddings | `nomic-embed-text` (274 MB) | Small, strong retrieval quality, uses task prefixes. |
 | Vector search | Float32 vectors in SQLite + in-memory cosine similarity, behind a `VectorStore` interface | A student's materials are a few thousand chunks, so a search takes milliseconds. A separate vector database would add setup without benefit. The interface allows moving to pgvector later. |

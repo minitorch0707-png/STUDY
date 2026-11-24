@@ -5,6 +5,7 @@ import { CheckCircle2, Cpu, Download, Gauge, HardDrive, KeyRound, Loader2, Palet
 import { Badge, Button, Card, CardHeader, ErrorNote, Field, InfoNote, Input, PageHeader, ProgressBar, Select, Skeleton, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/shell";
 import { Margin, useMarginVisible } from "@/components/margin";
+import { FasterModelOffer } from "@/components/speed";
 import { LicenseForm, useLicense } from "@/components/pro";
 import { Copy, LifeBuoy, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ interface Settings {
   temperature: number;
   contextWindow: number;
   thinking: boolean;
+  replyLength?: "quick" | "detailed";
   youtubeApiKeySet: boolean;
   describeImages: boolean;
   autoNotes: boolean;
@@ -273,6 +275,7 @@ function Advanced({ settings, save }: { settings: Settings; save: (p: Record<str
             temperature: Number(v.temperature),
             contextWindow: Number(v.contextWindow),
             thinking: v.thinking,
+            replyLength: v.replyLength,
             describeImages: v.describeImages,
             autoNotes: v.autoNotes,
           });
@@ -327,9 +330,15 @@ function Advanced({ settings, save }: { settings: Settings; save: (p: Record<str
             </span>
           </label>
           <label className="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={v.replyLength !== "detailed"} onChange={(e) => setV({ ...v, replyLength: e.target.checked ? "quick" : "detailed" })} className="mt-0.5 size-4 accent-[var(--primary)]" />
+            <span>
+              <b>Quick replies</b> <span className="text-muted">— short tutor answers and lessons that arrive much faster. Turn off for longer, more detailed explanations.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 text-sm">
             <input type="checkbox" checked={v.thinking} onChange={(e) => setV({ ...v, thinking: e.target.checked })} className="mt-0.5 size-4 accent-[var(--primary)]" />
             <span>
-              <b>Thinking mode for tutor answers</b> <span className="text-muted">— Qwen3 reasons before answering. Sometimes better, always slower.</span>
+              <b>Thinking mode for tutor answers</b> <span className="text-muted">— the model reasons before answering (only some models, e.g. qwen3:4b). Sometimes better, always much slower.</span>
             </span>
           </label>
           <label className="flex items-start gap-2.5 text-sm">
@@ -513,6 +522,7 @@ export default function SettingsPage() {
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-2">
             <Cpu className="size-4" /> AI Models
           </h2>
+          <FasterModelOffer />
           {settings ? <Models settings={settings} save={save} /> : <Loader2 className="size-5 animate-spin text-muted" />}
         </section>
 

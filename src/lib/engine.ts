@@ -1,4 +1,5 @@
 import "server-only";
+import { FAST_CHAT_MODEL } from "@/lib/settings";
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -55,7 +56,7 @@ export function recommendedModels(totalBytes = os.totalmem()) {
   const chat =
     gb < 7
       ? { name: "qwen3:1.7b", sizeGB: 1.4, why: `Your computer has ${Math.round(gb)} GB of memory, so we picked the smaller, faster model.` }
-      : { name: "qwen3:4b", sizeGB: 2.5, why: `Your computer has ${Math.round(gb)} GB of memory — enough for the recommended model.` };
+      : { name: FAST_CHAT_MODEL, sizeGB: 2.5, why: `Your computer has ${Math.round(gb)} GB of memory — enough for the recommended model.` };
   return { chat, embedding: { name: "nomic-embed-text", sizeGB: 0.27 }, memoryGB: Math.round(gb) };
 }
 

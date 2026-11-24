@@ -13,6 +13,7 @@ const schema = z.object({
   temperature: z.number().min(0).max(1.5).optional(),
   contextWindow: z.number().int().min(2048).max(131072).optional(),
   thinking: z.boolean().optional(),
+  replyLength: z.enum(["quick", "detailed"]).optional(),
   youtubeApiKey: z.string().max(200).optional(),
   describeImages: z.boolean().optional(),
   autoNotes: z.boolean().optional(),

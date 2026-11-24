@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { getSettings } from "@/lib/settings";
-import { OllamaEmbeddings, OllamaProvider, ollamaFetch } from "./ollama";
+import { KEEP_ALIVE, OllamaEmbeddings, OllamaProvider, ollamaFetch } from "./ollama";
 import { OpenAICompatibleEmbeddings, OpenAICompatibleProvider } from "./openai-compatible";
 import { extractJson } from "./text";
 import { AIUnavailableError, type ChatRequest, type EmbeddingProvider, type LLMProvider, type ProviderStatus, type RuntimeUsage } from "./types";
@@ -15,28 +15,45 @@ export * from "./types";
  * go through this small queue. Requests wait their turn instead of fighting over
  * memory (which would make every request slower).
  */
+/**
+ * One AI job at a time (a laptop can't run two quickly). Jobs the student is
+ * waiting on (tutor answers, lessons) go ahead of background work such as
+ * note updates, flashcards or slide descriptions.
+ */
 class Semaphore {
   private active = 0;
-  private waiting: (() => void)[] = [];
+  private waiting: { urgent: boolean; go: () => void }[] = [];
   constructor(private limit: number) {}
-  async run<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.active >= this.limit) await new Promise<void>((r) => this.waiting.push(r));
+  private async acquire(urgent: boolean) {
+    if (this.active >= this.limit)
+      await new Promise<void>((go) => {
+        const entry = { urgent, go };
+        if (urgent) {
+          const firstBackground = this.waiting.findIndex((w) => !w.urgent);
+          if (firstBackground === -1) this.waiting.push(entry);
+          else this.waiting.splice(firstBackground, 0, entry);
+        } else this.waiting.push(entry);
+      });
     this.active++;
+  }
+  private release() {
+    this.active--;
+    this.waiting.shift()?.go();
+  }
+  async run<T>(fn: () => Promise<T>, urgent = false): Promise<T> {
+    await this.acquire(urgent);
     try {
       return await fn();
     } finally {
-      this.active--;
-      this.waiting.shift()?.();
+      this.release();
     }
   }
-  async *runStream<T>(gen: () => AsyncGenerator<T>): AsyncGenerator<T> {
-    if (this.active >= this.limit) await new Promise<void>((r) => this.waiting.push(r));
-    this.active++;
+  async *runStream<T>(gen: () => AsyncGenerator<T>, urgent = false): AsyncGenerator<T> {
+    await this.acquire(urgent);
     try {
       yield* gen();
     } finally {
-      this.active--;
-      this.waiting.shift()?.();
+      this.release();
     }
   }
   get queued() {
@@ -69,6 +86,10 @@ function runtimeMeta(inner: LLMProvider): { provider: string; localOnly: boolean
   const s = getSettings();
   return s.aiProvider === "openai-compatible" ? { provider: "openai-compatible", localOnly: isLoopbackUrl(s.openaiBaseUrl) } : { provider: "ollama", localOnly: isLoopbackUrl(s.ollamaUrl) };
 }
+
+/** Work the student is actively waiting for. */
+const URGENT_TASKS = new Set(["tutor", "lesson", "checks", "grading"]);
+const isUrgent = (req: ChatRequest) => URGENT_TASKS.has(req.usage?.task ?? "");
 
 export function getLLM(): LLMProvider {
   const inner = rawLLM();
@@ -105,7 +126,7 @@ export function getLLM(): LLMProvider {
           record(req, usage, false, started, null);
           throw e;
         }
-      }),
+      }, isUrgent(req)),
     stream: (req) =>
       llmQueue.runStream(async function* () {
         let usage: RuntimeUsage = {};
@@ -121,7 +142,7 @@ export function getLLM(): LLMProvider {
         } finally {
           record(req, usage, completed, started, firstText);
         }
-      }),
+      }, isUrgent(req)),
   };
 }
 
@@ -226,4 +247,21 @@ export async function requireChatModel() {
 
 export function queueDepth() {
   return llmQueue.queued;
+}
+
+let lastWarm = 0;
+/**
+ * Load the chat model into memory ahead of the first question (e.g. when the
+ * Tutor opens), so the first reply doesn't include several seconds of loading.
+ * Never runs more than once every few minutes.
+ */
+export function warmChatModel() {
+  if (g.__testLLM || Date.now() - lastWarm < 4 * 60_000) return false;
+  const s = getSettings();
+  if (s.aiProvider !== "ollama") return false;
+  lastWarm = Date.now();
+  ollamaFetch(s.ollamaUrl, "/api/generate", { method: "POST", body: JSON.stringify({ model: s.chatModel, keep_alive: KEEP_ALIVE }), timeoutMs: 120_000 }).catch(() => {
+    lastWarm = 0;
+  });
+  return true;
 }

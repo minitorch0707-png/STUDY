@@ -103,7 +103,7 @@ describe("automatic AI engine", () => {
     expect(E.assetFor("aix", "ppc")).toBeNull();
   });
   it("chooses a model that fits the computer's memory", () => {
-    expect(E.recommendedModels(16 * 1024 ** 3).chat.name).toBe("qwen3:4b");
+    expect(E.recommendedModels(16 * 1024 ** 3).chat.name).toBe("qwen3:4b-instruct-2507-q4_K_M");
     expect(E.recommendedModels(4 * 1024 ** 3).chat.name).toBe("qwen3:1.7b");
   });
 });

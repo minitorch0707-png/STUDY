@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { db, newId, nowIso, parseJson } from "@/lib/db";
 import { generateJson, getLLM } from "@/lib/ai";
-import { QUICK_ACTIONS, SOCRATIC_ADDON, TUTOR_SYSTEM, adaptiveNote, checksPrompt, lessonPrompt } from "@/lib/ai/prompts";
+import { LONGER_ACTIONS, QUICK_ACTIONS, QUICK_LONGER_ADDON, QUICK_REPLY_ADDON, SOCRATIC_ADDON, TUTOR_SYSTEM, adaptiveNote, checksPrompt, lessonPrompt } from "@/lib/ai/prompts";
 import { formatSources, retrieve, type SourceRef } from "@/lib/rag/retrieve";
 import { seededShuffle } from "@/lib/learning/grading";
 import { verifyCitations, type Verification } from "@/lib/learning/citations";
@@ -252,11 +252,13 @@ function generateAnswer(answerId: string) {
   startLive(
     `msg:${answerId}`,
     async (emit, meta) => {
+      const fast = getSettings().replyLength !== "detailed";
       const history = (db()
-        .prepare("SELECT role, content FROM chat_messages WHERE topic_id = ? AND seq < ? AND status = 'complete' ORDER BY seq DESC LIMIT 8")
+        .prepare(`SELECT role, content FROM chat_messages WHERE topic_id = ? AND seq < ? AND status = 'complete' ORDER BY seq DESC LIMIT ${fast ? 6 : 8}`)
         .all(row.topic_id, userRow?.seq ?? row.seq) as { role: string; content: string }[]).reverse();
       const lastUser = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
-      const ctx = await topicContext(row.topic_id, `${opts.message ?? ""} ${quick ? lastUser : ""}`.trim(), 6);
+      // Fewer sources = less for the model to read before it starts answering.
+      const ctx = await topicContext(row.topic_id, `${opts.message ?? ""} ${quick ? lastUser : ""}`.trim(), fast ? 4 : 6);
       refs = ctx.refs;
       db().prepare("UPDATE chat_messages SET sources = ? WHERE id = ?").run(JSON.stringify(refs), answerId);
       meta({ sources: refs, mode: ctx.mode });
@@ -267,18 +269,21 @@ function generateAnswer(answerId: string) {
       const system =
         TUTOR_SYSTEM +
         (opts.socratic ? SOCRATIC_ADDON : "") +
+        (fast ? (row.action && LONGER_ACTIONS.has(row.action) ? QUICK_LONGER_ADDON : QUICK_REPLY_ADDON) : "") +
         `\n\nCurrent topic: "${ctx.topic.title}".${ctx.topic.objectives.length ? ` Objectives: ${ctx.topic.objectives.join("; ")}.` : ""}` +
         (hasLesson ? `\nThe student has read a lesson on this topic already.` : "") +
         adapt.note;
       const messages = [
         { role: "system" as const, content: system },
-        ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2500) })),
+        ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, fast ? 1500 : 2500) })),
         { role: "user" as const, content: `${ctx.block}\n\n${userText}` },
       ];
       const llm = getLLM();
       const started = Date.now();
       let text = "";
-      for await (const piece of llm.stream({ messages, think: getSettings().thinking, usage: { task: "tutor", replyId: answerId } })) {
+      // A safety cap well above the requested length, so a rambling reply can't run for minutes.
+      const maxTokens = fast ? (row.action && LONGER_ACTIONS.has(row.action) ? 700 : 450) : undefined;
+      for await (const piece of llm.stream({ messages, think: getSettings().thinking, maxTokens, usage: { task: "tutor", replyId: answerId } })) {
         text += piece;
         emit(piece);
       }
@@ -369,12 +374,13 @@ function generateLesson(lessonId: string) {
       refs = ctx.refs;
       db().prepare("UPDATE lessons SET sources = ? WHERE id = ?").run(JSON.stringify(refs), lessonId);
       meta({ sources: refs, mode: ctx.mode });
-      const prompt = lessonPrompt(ctx.topic, ctx.block);
+      const fast = getSettings().replyLength !== "detailed";
+      const prompt = lessonPrompt(ctx.topic, ctx.block, fast);
       const llm = getLLM();
       model = llm.model;
       const started = Date.now();
       let text = "";
-      for await (const piece of llm.stream({ messages: [{ role: "system", content: TUTOR_SYSTEM }, { role: "user", content: prompt }], think: false, usage: { task: "lesson" } })) {
+      for await (const piece of llm.stream({ messages: [{ role: "system", content: TUTOR_SYSTEM }, { role: "user", content: prompt }], think: false, maxTokens: fast ? 900 : 1800, usage: { task: "lesson" } })) {
         text += piece;
         emit(piece);
       }

@@ -15,7 +15,8 @@ export interface AppSettings {
   visionModel: string;        // empty = disabled
   temperature: number;
   contextWindow: number;      // tokens (Ollama num_ctx)
-  thinking: boolean;          // Qwen3 "thinking" mode for tutor answers (slower, sometimes better)
+  thinking: boolean;
+  replyLength: "quick" | "detailed"; // quick = short tutor answers, much faster on a laptop          // Qwen3 "thinking" mode for tutor answers (slower, sometimes better)
   youtubeApiKey: string;
   describeImages: boolean;    // run the vision model over slide images during upload
   setupComplete: boolean;     // first-run setup finished (or skipped)
@@ -27,17 +28,26 @@ export interface AppSettings {
   licenseEmail: string;
 }
 
+/**
+ * Default tutor model: the non-thinking 2507 update of Qwen3 4B. The original
+ * qwen3:4b "thinks" before answering, which made first words take far longer.
+ */
+export const FAST_CHAT_MODEL = "qwen3:4b-instruct-2507-q4_K_M";
+/** The previous default. Installs still using it are offered the faster model. */
+export const OLD_DEFAULT_CHAT_MODEL = "qwen3:4b";
+
 export const DEFAULT_SETTINGS: AppSettings = {
   aiProvider: "ollama",
   ollamaUrl: process.env.OLLAMA_URL || "http://127.0.0.1:11434",
   openaiBaseUrl: "http://127.0.0.1:1234/v1",
   openaiApiKey: "",
-  chatModel: "qwen3:4b",
+  chatModel: FAST_CHAT_MODEL,
   embeddingModel: "nomic-embed-text",
   visionModel: "",
   temperature: 0.4,
   contextWindow: 8192,
   thinking: false,
+  replyLength: "quick",
   youtubeApiKey: "",
   describeImages: false,
   setupComplete: false,

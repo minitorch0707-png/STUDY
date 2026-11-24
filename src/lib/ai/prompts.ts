@@ -19,7 +19,17 @@ Grounding rules (very important):
 export const SOCRATIC_ADDON = `
 SOCRATIC MODE IS ON: Do not hand over the answer. Guide the student with one or two focused questions at a time, give hints that build on what they said, and confirm or gently correct their reasoning. Reveal the full answer only if they explicitly ask for it or have tried three times.`;
 
-export function lessonPrompt(topic: { title: string; summary?: string | null; objectives: string[] }, sources: string) {
+/** Quick replies (the default): short answers start and finish much sooner on a laptop. */
+export const QUICK_REPLY_ADDON = `
+
+KEEP IT SHORT: answer in about 60-150 words — a direct answer first, then at most 3 short bullets or 2 short paragraphs. No preamble, no repeating the question, no long recap. The student can ask for more.`;
+/** Actions that ask for more depth get a little more room even in quick mode. */
+export const LONGER_ACTIONS = new Set(["deeper", "steps", "example", "difference"]);
+export const QUICK_LONGER_ADDON = `
+
+KEEP IT FOCUSED: about 150-250 words. No preamble and no long recap.`;
+
+export function lessonPrompt(topic: { title: string; summary?: string | null; objectives: string[] }, sources: string, quick = false) {
   return `${sources}
 
 Write a structured lesson on the topic "${topic.title}" for a first-year university student.
@@ -29,17 +39,17 @@ Use exactly these markdown sections, in order:
 ## In a nutshell
 (2-3 sentences, very simple.)
 ## Key concepts
-(Clear explanation of the main ideas, with citations.)
+(${quick ? "The 2-4 main ideas, a sentence or two each" : "Clear explanation of the main ideas"}, with citations.)
 ## Definitions
-(Bulleted list: **Term** — definition [S#].)
+(Bulleted list: **Term** — definition [S#].${quick ? " Only the essential terms." : ""})
 ## Examples and analogies
-(1-2 realistic examples and one everyday analogy.)
+(${quick ? "One realistic example." : "1-2 realistic examples and one everyday analogy."})
 ## What your course emphasises
 (Details the lecturer stressed, e.g. from speaker notes or repeated points, with citations.)
 ## Recap
-(3-5 short bullets.)
+(3${quick ? "" : "-5"} short bullets.)
 
-Keep it under 700 words. Do not include quiz questions; those are added separately.`;
+Keep it under ${quick ? 350 : 700} words. Do not include quiz questions; those are added separately.`;
 }
 
 export const QUICK_ACTIONS: Record<string, { label: string; prompt: string }> = {

@@ -5,8 +5,8 @@ import { getSettings } from "@/lib/settings";
 
 /** Curated models that fit comfortably on a 16 GB Apple Silicon laptop. */
 export const RECOMMENDED_MODELS = [
-  { name: "qwen3:4b", role: "chat", size: "2.5 GB", ram: "~4–5 GB while running", note: "Recommended default. Strong reasoning for its size; good at structured quiz/flashcard output." },
-  { name: "qwen3:4b-instruct-2507-q4_K_M", role: "chat", size: "2.5 GB", ram: "~4–5 GB", note: "Non-thinking 2507 update of Qwen3 4B — often faster replies. Try it if qwen3:4b feels slow." },
+  { name: "qwen3:4b-instruct-2507-q4_K_M", role: "chat", size: "2.5 GB", ram: "~4–5 GB while running", note: "Recommended default. Answers straight away (no hidden \"thinking\" step), so replies start much sooner." },
+  { name: "qwen3:4b", role: "chat", size: "2.5 GB", ram: "~4–5 GB", note: "Original Qwen3 4B. Thinks before answering: sometimes more careful, noticeably slower." },
   { name: "gemma3:4b", role: "vision", size: "3.3 GB", ram: "~5–6 GB", note: "Understands images. Use as the vision model to describe diagrams on slides." },
   { name: "qwen3:8b", role: "chat", size: "5.2 GB", ram: "~7–8 GB", note: "Noticeably better answers, roughly half the speed. Fine on 16 GB if few other apps are open." },
   { name: "nomic-embed-text", role: "embedding", size: "274 MB", ram: "~0.5 GB", note: "Recommended embedding model for search over your materials." },

@@ -37,6 +37,7 @@ import { Badge, Button, ButtonLink, Card, CardHeader, ErrorNote, InfoNote, PageH
 import { Markdown, MasteryBadge, sourceHref, type Mastery, type SourceRef } from "@/components/learning";
 import { Modal, useToast } from "@/components/overlay";
 import { MarginStatus, useSavedFlash, type MarginState } from "@/components/margin";
+import { FasterModelOffer, QuickRepliesToggle } from "@/components/speed";
 import { ApiError, api, readStream, useApi } from "@/lib/client";
 
 type Status = "streaming" | "complete" | "interrupted" | "failed";
@@ -457,6 +458,8 @@ function TutorInner() {
     try {
       setSocratic(localStorage.getItem("ll-socratic") === "1");
     } catch {}
+    // Load the AI model into memory now, so the first answer starts sooner.
+    fetch("/api/ai/warm", { method: "POST" }).catch(() => {});
   }, []);
 
   // ---------------------------------------------------------------- following
@@ -747,6 +750,7 @@ function TutorInner() {
           . You can still read your saved lesson and the original slides.
         </InfoNote>
       )}
+      <FasterModelOffer />
       {adaptive && mastery.status === "weak" && (
         <InfoNote tone="primary" icon={<Sparkles className="size-4" />} className="mb-5">
           You&apos;ve found this topic tricky, so your tutor will explain it a <b>different way</b> this time. Try <b>Explain simpler</b> or <b>Teach me step by step</b>.
@@ -940,6 +944,7 @@ function TutorInner() {
                   Your draft stays here as you move between screens.
                 </p>
               </form>
+              <QuickRepliesToggle />
               <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-text-2">
                 <input
                   type="checkbox"

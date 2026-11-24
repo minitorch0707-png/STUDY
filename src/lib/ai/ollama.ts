@@ -12,6 +12,9 @@ interface OllamaOpts {
 
 const capabilityCache = new Map<string, { caps: string[]; at: number }>();
 
+/** Keep models in memory between questions, so replies don't wait for a reload. */
+export const KEEP_ALIVE = "60m";
+
 export async function ollamaFetch(baseUrl: string, path: string, init?: RequestInit & { timeoutMs?: number }) {
   const { timeoutMs = 10 * 60_000, ...rest } = init ?? {};
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -72,7 +75,7 @@ export class OllamaProvider implements LLMProvider {
       model,
       messages: req.messages,
       stream,
-      keep_alive: "15m",
+      keep_alive: KEEP_ALIVE,
       options: {
         temperature: req.temperature ?? this.opts.temperature,
         num_ctx: this.opts.contextWindow,
@@ -160,7 +163,7 @@ export class OllamaEmbeddings implements EmbeddingProvider {
     if (texts.length === 0) return [];
     const res = await ollamaFetch(this.baseUrl, "/api/embed", {
       method: "POST",
-      body: JSON.stringify({ model: this.model, input: texts.map((t) => this.prefix(kind) + t), keep_alive: "15m" }),
+      body: JSON.stringify({ model: this.model, input: texts.map((t) => this.prefix(kind) + t), keep_alive: KEEP_ALIVE }),
     });
     const json = (await res.json()) as { embeddings: number[][] };
     return json.embeddings;
