@@ -11,10 +11,10 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "soft";
 type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-primary text-white hover:bg-primary-hover shadow-card",
+  primary: "bg-primary text-on-primary hover:bg-primary-hover shadow-card",
   secondary: "bg-surface text-text border border-border hover:bg-surface-2 shadow-card",
   ghost: "text-text-2 hover:bg-surface-2 hover:text-text",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-danger text-on-primary hover:opacity-90",
   soft: "bg-primary-soft text-primary-text hover:brightness-95 dark:hover:brightness-125",
 };
 const sizes: Record<Size, string> = {
@@ -143,7 +143,7 @@ export function PageHeader({ title, subtitle, actions, eyebrow }: { title: React
     <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {eyebrow && <div className="mb-1.5 text-[13px] text-muted">{eyebrow}</div>}
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>
+        <h1 className="text-[34px] leading-[1.05] sm:text-[44px]">{title}</h1>
         {subtitle && <p className="mt-1.5 text-[15px] text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

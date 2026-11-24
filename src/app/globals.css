@@ -3,55 +3,73 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Design tokens. Light theme by default; .dark on <html> switches to dark. */
+/* Design tokens (LectureLab handoff): warm paper, ink navy, cobalt, quiet borders.
+   Light is the default; .dark on <html> switches to the navy surfaces. */
 :root {
-  --bg: #f7f7fb;
-  --surface: #ffffff;
-  --surface-2: #f1f2f7;
-  --surface-3: #e8eaf2;
-  --border: #e3e5ee;
-  --border-strong: #cfd3e0;
-  --text: #171a2b;
-  --text-2: #4a4f66;
-  --muted: #6e7389;
-  --primary: #5b5bd6;
-  --primary-hover: #4c4cc4;
-  --primary-soft: #ececfd;
-  --primary-text: #4343b8;
-  --success: #15935a;
-  --success-soft: #e3f6ec;
-  --warning: #b36b00;
-  --warning-soft: #fdf1dc;
-  --danger: #d1344b;
-  --danger-soft: #fde8eb;
-  --ring: #8b8bf0;
-  --shadow: 0 1px 2px rgb(20 22 40 / 0.04), 0 2px 8px rgb(20 22 40 / 0.04);
-  --shadow-lg: 0 10px 40px -10px rgb(20 22 40 / 0.18);
+  --bg: #f7f5ef;              /* warm paper */
+  --surface: #fffdf8;         /* card */
+  --surface-2: #f2efe6;
+  --surface-3: #e8e4d9;
+  --border: #d9dbe0;
+  --border-strong: #c2c6cf;
+  --text: #182039;            /* ink */
+  --text-2: #353e57;
+  --muted: #535c70;
+  --primary: #2446d8;         /* cobalt */
+  --primary-hover: #1b37b4;
+  --primary-soft: #e9eeff;
+  --primary-text: #2446d8;
+  --on-primary: #ffffff;
+  --success: #207354;
+  --success-soft: #e2f1ea;
+  --warning: #8a5a00;
+  --warning-soft: #fbf0d9;
+  --danger: #b42335;
+  --danger-soft: #fbe7e9;
+  --nav: #131c33;             /* navigation */
+  --nav-2: #1c2844;
+  --nav-text: #f5f6fa;
+  --nav-muted: #a9b1c6;
+  --ring: #2446d8;
+  --shadow: 0 1px 2px rgb(24 32 57 / 0.05);
+  --shadow-lg: 0 12px 40px -12px rgb(24 32 57 / 0.25);
+  --margin-paper: #fffdf8;
+  --margin-ink: #182039;
+  --margin-grid: #c9d3f5;
   color-scheme: light;
 }
 
 .dark {
-  --bg: #0d0f17;
-  --surface: #141722;
-  --surface-2: #1b1f2d;
-  --surface-3: #242939;
-  --border: #252a3a;
-  --border-strong: #353b50;
-  --text: #ecedf5;
-  --text-2: #b7bacb;
-  --muted: #8c90a5;
-  --primary: #7c7cf0;
-  --primary-hover: #8f8ff4;
-  --primary-soft: #23244a;
-  --primary-text: #b4b4fb;
-  --success: #3ccf8e;
-  --success-soft: #12301f;
-  --warning: #f0b14a;
-  --warning-soft: #33270f;
-  --danger: #f2687c;
-  --danger-soft: #3a161d;
-  --ring: #7c7cf0;
+  --bg: #131c33;
+  --surface: #1c2844;
+  --surface-2: #22304f;
+  --surface-3: #2a3a5e;
+  --border: #33436a;
+  --border-strong: #46577f;
+  --text: #f5f6fa;
+  --text-2: #d3d8e6;
+  --muted: #aab2c7;
+  --primary: #adc1ff;
+  --primary-hover: #c4d3ff;
+  --primary-soft: #26365f;
+  --primary-text: #adc1ff;
+  --on-primary: #182039;      /* ink on solid action fills */
+  --success: #7fd3ad;
+  --success-soft: #173a30;
+  --warning: #f2c26b;
+  --warning-soft: #3a2f17;
+  --danger: #ff9aa6;
+  --danger-soft: #42202a;
+  --nav: #0d1428;
+  --nav-2: #18223d;
+  --nav-text: #f5f6fa;
+  --nav-muted: #a9b1c6;
+  --ring: #adc1ff;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 16px 48px -12px rgb(0 0 0 / 0.6);
+  --margin-paper: #f5f6fa;
+  --margin-ink: #131c33;
+  --margin-grid: #b9c6ee;
   color-scheme: dark;
 }
 
@@ -75,8 +93,14 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-sans: "Avenir Next", Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --color-on-primary: var(--on-primary);
+  --color-nav: var(--nav);
+  --color-nav-2: var(--nav-2);
+  --color-nav-text: var(--nav-text);
+  --color-nav-muted: var(--nav-muted);
   --shadow-card: var(--shadow);
   --shadow-pop: var(--shadow-lg);
 }
@@ -88,18 +112,15 @@ body {
 }
 
 body {
-  font-feature-settings: "cv11", "ss01";
-  /* A soft brand glow at the top of every page. */
-  background-image: radial-gradient(1100px 420px at 70% -120px, color-mix(in srgb, var(--primary) 9%, transparent), transparent 70%);
-  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Headings use a friendlier display typeface. */
+/* Display headings use Georgia (editorial, warm). */
 h1,
-h2.font-display,
 .font-display {
-  font-family: var(--font-display), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 @media print {
@@ -119,7 +140,54 @@ h2.font-display,
   border-radius: 6px;
 }
 
+/* Margin: short CSS transitions on a few SVG layers. */
+.margin__body,
+.margin__eyes,
+.margin__check {
+  transform-box: fill-box;
+  transition: transform 0.35s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.25s ease;
+}
+.margin__body {
+  transform-origin: 50% 100%;
+}
+.margin__eyes {
+  transform-origin: center;
+}
+.margin--ready .margin__eyes {
+  animation: margin-blink 6s infinite;
+}
+.margin--studying .margin__body {
+  transform: rotate(9deg) translateY(1px);
+}
+.margin--studying .margin__eyes {
+  transform: translate(1.5px, 2px);
+}
+.margin__check {
+  transform-origin: center;
+  opacity: 0;
+  transform: translateY(6px) scale(0.6);
+}
+.margin--saved .margin__check {
+  opacity: 1;
+  transform: none;
+}
+@keyframes margin-blink {
+  0%, 94%, 100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .margin__eyes {
+    animation: none !important;
+  }
+  .margin--studying .margin__body,
+  .margin--studying .margin__eyes {
+    transform: none;
+  }
   *,
   *::before,
   *::after {

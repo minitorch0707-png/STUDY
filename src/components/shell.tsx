@@ -3,54 +3,50 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  BarChart3,
-  BookOpen,
-  CalendarDays,
-  ClipboardCheck,
-  GraduationCap,
-  Layers,
-  LayoutDashboard,
-  Menu,
-  NotebookPen,
-  Monitor,
-  Moon,
-  Settings,
-  Sparkles,
-  Sun,
-  X,
-} from "lucide-react";
+import { Menu, Monitor, Moon, Sparkles, Sun, X } from "lucide-react";
 import { cn } from "./ui";
 import { openUpgrade, useApi } from "@/lib/client";
+import { ActivityEntry } from "./activity";
 
-const NAV_GROUPS = [
+/** Icons from the hand-authored LectureLab sprite (public/brand/icons.svg). */
+export type SpriteIcon = "home" | "courses" | "tutor" | "notes" | "practice" | "cards" | "calendar" | "grades" | "upload" | "settings";
+export function Icon({ name, className }: { name: SpriteIcon; className?: string }) {
+  return (
+    <svg className={cn("size-[18px] shrink-0", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+      <use href={`/brand/icons.svg#${name}`} />
+    </svg>
+  );
+}
+
+const NAV_GROUPS: { label: string; items: { href: string; label: string; icon: SpriteIcon }[] }[] = [
   {
-    label: null,
+    label: "Workspace",
     items: [
-      { href: "/", label: "Home", icon: LayoutDashboard },
-      { href: "/courses", label: "My Courses", icon: BookOpen },
+      { href: "/", label: "Home", icon: "home" },
+      { href: "/courses", label: "My courses", icon: "courses" },
     ],
   },
   {
     label: "Learn",
     items: [
-      { href: "/tutor", label: "AI Tutor", icon: Sparkles },
-      { href: "/notes", label: "Notes", icon: NotebookPen },
+      { href: "/tutor", label: "Tutor", icon: "tutor" },
+      { href: "/notes", label: "Notes", icon: "notes" },
     ],
   },
   {
     label: "Practice",
     items: [
-      { href: "/exams", label: "Practice Exams", icon: ClipboardCheck },
-      { href: "/flashcards", label: "Flashcards", icon: Layers },
+      { href: "/exams", label: "Practice exams", icon: "practice" },
+      { href: "/flashcards", label: "Flashcards", icon: "cards" },
     ],
   },
   {
     label: "Plan",
     items: [
-      { href: "/planner", label: "Study Planner", icon: CalendarDays },
-      { href: "/progress", label: "Progress", icon: BarChart3 },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/calendar", label: "Calendar", icon: "calendar" },
+      { href: "/grades", label: "Grades", icon: "grades" },
+      { href: "/progress", label: "Progress", icon: "grades" },
+      { href: "/settings", label: "Settings", icon: "settings" },
     ],
   },
 ];
@@ -79,7 +75,7 @@ export function useTheme() {
   return [theme, update] as const;
 }
 
-export function ThemeToggle({ compact }: { compact?: boolean }) {
+export function ThemeToggle({ compact, onNav }: { compact?: boolean; onNav?: boolean }) {
   const [theme, setTheme] = useTheme();
   const opts: { id: Theme; icon: typeof Sun; label: string }[] = [
     { id: "light", icon: Sun, label: "Light" },
@@ -87,15 +83,20 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
     { id: "system", icon: Monitor, label: "System" },
   ];
   return (
-    <div className="flex rounded-xl bg-surface-2 p-1" role="radiogroup" aria-label="Colour theme">
+    <div className={cn("flex rounded-xl p-1", onNav ? "bg-white/5" : "bg-surface-2")} role="radiogroup" aria-label="Colour theme">
       {opts.map((o) => (
         <button
           key={o.id}
           role="radio"
           aria-checked={theme === o.id}
           title={o.label}
+          aria-label={o.label}
           onClick={() => setTheme(o.id)}
-          className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors", theme === o.id ? "bg-surface text-text shadow-card" : "text-muted hover:text-text", compact ? "px-2" : "px-3")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors",
+            onNav ? (theme === o.id ? "bg-white/15 text-nav-text" : "text-nav-muted hover:text-nav-text") : theme === o.id ? "bg-surface text-text shadow-card" : "text-muted hover:text-text",
+            compact ? "px-2" : "px-3",
+          )}
         >
           <o.icon className="size-3.5" />
           {!compact && o.label}
@@ -108,18 +109,12 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
 function AIStatus() {
   const { data } = useApi<{ reachable: boolean; chatModel: { name: string; installed: boolean }; queue: number }>("/api/status", { poll: 20000 });
   const ok = data?.reachable && data.chatModel.installed;
-  const label = !data ? "Checking AI…" : ok ? data.chatModel.name : data.reachable ? "Model not installed" : "AI offline";
+  const label = !data ? "Checking local AI…" : ok ? "Local AI workspace" : data.reachable ? "AI model not installed" : "Local AI offline";
   return (
-    <Link href="/settings#models" className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-xs hover:bg-surface-2 transition-colors">
-      <span className={cn("relative flex size-2", !data && "opacity-40")}>
-        {ok && <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-40" />}
-        <span className={cn("relative inline-flex size-2 rounded-full", ok ? "bg-success" : data ? "bg-warning" : "bg-muted")} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-muted">Local AI</div>
-        <div className="truncate font-medium text-text">{label}</div>
-      </div>
-      {data && data.queue > 0 && <span className="text-[11px] text-muted">{data.queue} queued</span>}
+    <Link href="/settings#models" className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs text-nav-muted transition-colors hover:bg-white/5 hover:text-nav-text" title={ok ? `Model: ${data!.chatModel.name}` : undefined}>
+      <span className={cn("inline-block size-2 rounded-full", ok ? "bg-[#5fd39d]" : data ? "bg-[#f2c26b]" : "bg-nav-muted")} aria-hidden />
+      <span className="truncate">{label}</span>
+      {data && data.queue > 0 && <span className="ml-auto">{data.queue} queued</span>}
     </Link>
   );
 }
@@ -128,11 +123,11 @@ function ProCard() {
   const { data } = useApi<{ enabled: boolean; pro: boolean; proName: string; price: string }>("/api/license");
   if (!data?.enabled || data.pro) return null;
   return (
-    <button onClick={() => openUpgrade()} className="w-full rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 p-3 text-left text-white shadow-card transition-opacity hover:opacity-95">
+    <button onClick={() => openUpgrade()} className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-left text-nav-text transition-colors hover:bg-white/10">
       <div className="flex items-center gap-1.5 text-sm font-semibold">
         <Sparkles className="size-4" /> {data.proName}
       </div>
-      <div className="mt-0.5 text-xs text-white/85">Unlimited courses, exam simulations, AI marking and the planner · {data.price}</div>
+      <div className="mt-0.5 text-xs text-nav-muted">Unlimited courses, timed mocks and rubric feedback · {data.price}</div>
     </button>
   );
 }
@@ -141,9 +136,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   return (
     <nav className="space-y-5" aria-label="Main">
-      {NAV_GROUPS.map((g, gi) => (
-        <div key={gi}>
-          {g.label && <div className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted/80">{g.label}</div>}
+      {NAV_GROUPS.map((g) => (
+        <div key={g.label}>
+          <div className="mb-1.5 px-3 text-[12px] font-semibold text-nav-muted">{g.label}</div>
           <div className="space-y-0.5">
             {g.items.map((n) => {
               const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
@@ -154,12 +149,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
-                    active ? "bg-primary-soft text-primary-text" : "text-text-2 hover:bg-surface-2 hover:text-text",
+                    "flex items-center gap-3 rounded-xl px-3 py-2 text-[15px] transition-colors",
+                    active ? "bg-nav-2 font-medium text-nav-text ring-1 ring-white/5" : "text-nav-text/85 hover:bg-white/5 hover:text-nav-text",
                   )}
                 >
-                  {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary" aria-hidden />}
-                  <n.icon className={cn("size-[18px] transition-transform group-hover:scale-105", active ? "text-primary-text" : "text-muted group-hover:text-text")} />
+                  <Icon name={n.icon} />
                   {n.label}
                 </Link>
               );
@@ -173,12 +167,22 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-2">
-      <div className="grid size-8 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-card">
-        <GraduationCap className="size-[18px]" />
-      </div>
-      <span className="text-[17px] font-semibold tracking-tight">LectureLab</span>
+    <Link href="/" className="flex items-center gap-2.5 px-2" aria-label="LectureLab home">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/mark.svg" alt="" className="size-9 rounded-[9px]" />
+      <span className="text-[19px] font-bold tracking-tight text-nav-text">LectureLab</span>
     </Link>
+  );
+}
+
+function SidebarFooter({ mobile }: { mobile?: boolean }) {
+  return (
+    <div className="space-y-2">
+      <ProCard />
+      <ActivityEntry />
+      <AIStatus />
+      <ThemeToggle compact={!mobile} onNav />
+    </div>
   );
 }
 
@@ -186,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
-  // Distraction-free review mode
+  // Distraction-free screens
   const focus = path.startsWith("/flashcards/review") || path.startsWith("/setup");
 
   return (
@@ -195,51 +199,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       {!focus && (
-        <aside className="sticky top-0 hidden h-screen print:!hidden w-64 shrink-0 flex-col border-r border-border bg-surface/60 px-3 py-5 backdrop-blur lg:flex">
+        <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col bg-nav px-4 py-6 lg:flex print:!hidden">
           <Logo />
-          <div className="mt-7 flex-1 overflow-y-auto">
+          <div className="mt-8 flex-1 overflow-y-auto pr-1">
             <NavLinks />
           </div>
-          <div className="space-y-3">
-            <ProCard />
-            <AIStatus />
-            <ThemeToggle compact />
-          </div>
+          <SidebarFooter />
         </aside>
       )}
 
-      {/* Mobile top bar */}
       {!focus && (
-        <div className="fixed inset-x-0 top-0 z-30 flex h-14 print:hidden items-center justify-between border-b border-border bg-surface/85 px-4 backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between bg-nav px-4 lg:hidden print:hidden">
           <Logo />
-          <button onClick={() => setOpen(true)} className="rounded-lg p-2 hover:bg-surface-2" aria-label="Open menu">
+          <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-nav-text hover:bg-white/10" aria-label="Open menu">
             <Menu className="size-5" />
           </button>
         </div>
       )}
       {open && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40 animate-rise" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-surface px-3 py-5 shadow-pop animate-rise">
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-nav px-4 py-5 shadow-pop">
             <div className="flex items-center justify-between">
               <Logo />
-              <button onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-surface-2" aria-label="Close menu">
+              <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-nav-text hover:bg-white/10" aria-label="Close menu">
                 <X className="size-5" />
               </button>
             </div>
-            <div className="mt-7 flex-1">
+            <div className="mt-7 flex-1 overflow-y-auto">
               <NavLinks onNavigate={() => setOpen(false)} />
             </div>
-            <div className="space-y-3">
-              <AIStatus />
-              <ThemeToggle />
-            </div>
+            <SidebarFooter mobile />
           </div>
         </div>
       )}
 
       <main id="main" className={cn("min-w-0 flex-1 print:pt-0", !focus && "pt-14 lg:pt-0")}>
-        <div className={cn("mx-auto w-full", focus ? "max-w-4xl px-4 py-6" : "max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10")}>{children}</div>
+        <div className={cn("mx-auto w-full", focus ? "max-w-4xl px-4 py-6" : "max-w-[1120px] px-4 py-8 sm:px-8 lg:px-14 lg:py-12")}>{children}</div>
       </main>
     </div>
   );

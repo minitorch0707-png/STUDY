@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 import { cn } from "./ui";
 
@@ -32,8 +33,9 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
       prev?.focus();
     };
   }, [open, onClose]);
-  if (!open) return null;
-  return (
+  if (!open || typeof document === "undefined") return null;
+  // Portalled to <body> so a dialog opened from the sticky sidebar isn't trapped under the page.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
       <div ref={ref} className={cn("relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-surface shadow-pop animate-rise sm:rounded-2xl", wide ? "sm:max-w-2xl" : "sm:max-w-lg")}>
@@ -45,7 +47,8 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
