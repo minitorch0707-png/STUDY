@@ -1,0 +1,69 @@
+# Builds Mac and Windows installers for a work-in-progress branch, WITHOUT
+# releasing them. Nobody's installed app updates to these builds.
+#
+# Runs on every push to a "release-*" branch (or Actions → Test build → Run
+# workflow). Download the installers from the run page under "Artifacts".
+name: Test build
+
+on:
+  push:
+    branches: ["release-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest # Apple Silicon
+            target: --mac
+            name: LectureLab-Mac-test
+          - os: windows-latest
+            target: --win
+            name: LectureLab-Windows-test
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # A preview version sorts above the last release and below the next one,
+      # so the app never "updates" to or from this build by mistake.
+      - name: Install
+        shell: bash
+        run: |
+          V="0.3.99-preview.${{ github.run_number }}"
+          npm ci
+          npm ci --prefix desktop
+          npm version "$V" --no-git-tag-version --allow-same-version --prefix desktop
+          npm version "$V" --no-git-tag-version --allow-same-version
+
+      - name: Build server and bundle Node.js
+        run: npm run desktop:prepare
+
+      - name: Package (no upload to Releases)
+        working-directory: desktop
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder ${{ matrix.target }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            desktop/dist/LectureLab-Mac.dmg
+            desktop/dist/LectureLab-Windows-Setup.exe
+          if-no-files-found: ignore
+          retention-days: 14
