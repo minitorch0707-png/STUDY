@@ -97,7 +97,9 @@ export class OllamaProvider implements LLMProvider {
       model: string;
       prompt_eval_count?: number;
       eval_count?: number;
+      eval_duration?: number;
     };
+    req.onUsage?.({ inputTokens: json.prompt_eval_count, outputTokens: json.eval_count, outputDurationMs: json.eval_duration ? json.eval_duration / 1e6 : undefined });
     return {
       text: stripThinking(json.message?.content ?? ""),
       model: json.model,
@@ -127,8 +129,9 @@ export class OllamaProvider implements LLMProvider {
         const line = buffer.slice(0, nl).trim();
         buffer = buffer.slice(nl + 1);
         if (!line) continue;
-        const msg = JSON.parse(line) as { message?: { content?: string }; error?: string };
+        const msg = JSON.parse(line) as { message?: { content?: string }; error?: string; done?: boolean; prompt_eval_count?: number; eval_count?: number; eval_duration?: number };
         if (msg.error) throw new Error(msg.error);
+        if (msg.done) req.onUsage?.({ inputTokens: msg.prompt_eval_count, outputTokens: msg.eval_count, outputDurationMs: msg.eval_duration ? msg.eval_duration / 1e6 : undefined });
         let piece = msg.message?.content ?? "";
         // Some models print <think>…</think> inline; hide it from students.
         if (piece.includes("<think>")) inThink = true;

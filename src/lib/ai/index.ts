@@ -4,7 +4,9 @@ import { getSettings } from "@/lib/settings";
 import { OllamaEmbeddings, OllamaProvider, ollamaFetch } from "./ollama";
 import { OpenAICompatibleEmbeddings, OpenAICompatibleProvider } from "./openai-compatible";
 import { extractJson } from "./text";
-import { AIUnavailableError, type ChatRequest, type EmbeddingProvider, type LLMProvider, type ProviderStatus } from "./types";
+import { AIUnavailableError, type ChatRequest, type EmbeddingProvider, type LLMProvider, type ProviderStatus, type RuntimeUsage } from "./types";
+import { isLoopbackUrl, recordUsage } from "@/lib/services/activity";
+import { newId } from "@/lib/db";
 
 export * from "./types";
 
@@ -61,13 +63,65 @@ function rawLLM(): LLMProvider {
   return new OllamaProvider({ baseUrl: s.ollamaUrl, model: s.chatModel, temperature: s.temperature, contextWindow: s.contextWindow });
 }
 
+/** Where runs go, for the Study activity panel: "local" only when verifiably on this computer. */
+function runtimeMeta(inner: LLMProvider): { provider: string; localOnly: boolean } {
+  if (g.__testLLM) return { provider: inner.name, localOnly: true };
+  const s = getSettings();
+  return s.aiProvider === "openai-compatible" ? { provider: "openai-compatible", localOnly: isLoopbackUrl(s.openaiBaseUrl) } : { provider: "ollama", localOnly: isLoopbackUrl(s.ollamaUrl) };
+}
+
 export function getLLM(): LLMProvider {
   const inner = rawLLM();
+  const meta = runtimeMeta(inner);
+  // Every run is measured here (counts and timings only; never content).
+  const record = (req: ChatRequest, usage: RuntimeUsage, completed: boolean, started: number, firstText: number | null) =>
+    recordUsage({
+      runKey: newId(),
+      task: req.usage?.task ?? "other",
+      replyId: req.usage?.replyId ?? null,
+      completed,
+      provider: meta.provider,
+      model: req.model ?? inner.model,
+      localOnly: meta.localOnly,
+      inputTokens: usage.inputTokens ?? null,
+      outputTokens: usage.outputTokens ?? null,
+      durationMs: Date.now() - started,
+      firstTextMs: firstText,
+      outputTokensPerS: usage.outputTokens && usage.outputDurationMs ? usage.outputTokens / (usage.outputDurationMs / 1000) : null,
+    });
   return {
     name: inner.name,
     model: inner.model,
-    chat: (req) => llmQueue.run(() => inner.chat(req)),
-    stream: (req) => llmQueue.runStream(() => inner.stream(req)),
+    chat: (req) =>
+      llmQueue.run(async () => {
+        let usage: RuntimeUsage = {};
+        const started = Date.now();
+        try {
+          const res = await inner.chat({ ...req, onUsage: (u) => ((usage = u), req.onUsage?.(u)) });
+          if (usage.inputTokens === undefined && usage.outputTokens === undefined && (res.promptTokens || res.outputTokens)) usage = { inputTokens: res.promptTokens, outputTokens: res.outputTokens };
+          record(req, usage, true, started, null);
+          return res;
+        } catch (e) {
+          record(req, usage, false, started, null);
+          throw e;
+        }
+      }),
+    stream: (req) =>
+      llmQueue.runStream(async function* () {
+        let usage: RuntimeUsage = {};
+        const started = Date.now();
+        let firstText: number | null = null;
+        let completed = false;
+        try {
+          for await (const piece of inner.stream({ ...req, onUsage: (u) => ((usage = u), req.onUsage?.(u)) })) {
+            if (firstText === null && piece) firstText = Date.now() - started;
+            yield piece;
+          }
+          completed = true;
+        } finally {
+          record(req, usage, completed, started, firstText);
+        }
+      }),
   };
 }
 

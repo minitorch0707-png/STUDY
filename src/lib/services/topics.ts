@@ -121,7 +121,7 @@ export async function extractTopicsForDocument(documentId: string, opts: { repla
       const prompt = topicPrompt(doc.display_name, outline, maxTopics);
       const started = Date.now();
       try {
-        const res = await generateJson(topicSchema, { messages: [{ role: "user", content: prompt }], temperature: 0.2 });
+        const res = await generateJson(topicSchema, { messages: [{ role: "user", content: prompt }], temperature: 0.2, usage: { task: "topics" } });
         logGeneration({ task: "topics", model: getLLM().model, prompt, output: JSON.stringify(res), durationMs: Date.now() - started, refId: documentId });
         for (const t of res.topics) {
           const ids = t.sections.map((n) => byIdx.get(n)?.id).filter((x): x is string => Boolean(x));

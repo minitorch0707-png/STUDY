@@ -124,7 +124,7 @@ export async function findResources(topicId: string, refresh = false) {
     if (st.reachable && st.chatModel.installed) {
       const res = await generateJson(
         z.object({ reasons: z.array(z.object({ i: z.number().int(), reason: z.string() })) }),
-        { messages: [{ role: "user", content: resourceReasonPrompt(topic.title, found.map((f, i) => ({ i, title: f.title, description: f.description ?? "" }))) }], temperature: 0.2, maxTokens: 900 },
+        { messages: [{ role: "user", content: resourceReasonPrompt(topic.title, found.map((f, i) => ({ i, title: f.title, description: f.description ?? "" }))) }], temperature: 0.2, maxTokens: 900, usage: { task: "resources" } },
       );
       for (const r of res.reasons) reasons.set(r.i, r.reason.slice(0, 200));
     }

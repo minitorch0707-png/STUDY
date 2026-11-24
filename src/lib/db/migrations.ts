@@ -330,4 +330,205 @@ CREATE INDEX idx_notes_course ON notes(course_id, updated_at);
 CREATE UNIQUE INDEX idx_notes_auto_topic ON notes(topic_id) WHERE kind = 'auto';
 `,
   },
+  {
+    id: 5,
+    sql: `
+-- ── Release 1: dependable course workspace ─────────────────────────────────
+-- Additive only: no existing column is dropped, and existing data is moved
+-- into the new structures below.
+
+-- Tutor threads: one per course topic, with the unsent draft and resume position.
+CREATE TABLE tutor_threads (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  topic_id TEXT NOT NULL UNIQUE REFERENCES topics(id) ON DELETE CASCADE,
+  draft TEXT NOT NULL DEFAULT '',
+  resume_message_id TEXT,
+  last_active_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+ALTER TABLE chat_messages ADD COLUMN thread_id TEXT REFERENCES tutor_threads(id) ON DELETE CASCADE;
+ALTER TABLE chat_messages ADD COLUMN seq INTEGER;
+ALTER TABLE chat_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'; -- streaming | complete | interrupted | failed
+ALTER TABLE chat_messages ADD COLUMN client_id TEXT;                          -- idempotency key from the app
+ALTER TABLE chat_messages ADD COLUMN reply_to TEXT;                           -- the student message an answer replies to
+ALTER TABLE chat_messages ADD COLUMN verification TEXT;                       -- citation check results (JSON)
+ALTER TABLE chat_messages ADD COLUMN error TEXT;
+ALTER TABLE chat_messages ADD COLUMN updated_at TEXT;
+ALTER TABLE chat_messages ADD COLUMN options TEXT;                          -- generation options (JSON), so a retry repeats the same request
+CREATE UNIQUE INDEX idx_chat_client ON chat_messages(topic_id, client_id) WHERE client_id IS NOT NULL;
+CREATE INDEX idx_chat_thread ON chat_messages(thread_id, seq);
+
+INSERT INTO tutor_threads (id, course_id, topic_id, last_active_at, created_at)
+  SELECT lower(hex(randomblob(16))), t.course_id, t.id, MAX(m.created_at), MIN(m.created_at)
+  FROM chat_messages m JOIN topics t ON t.id = m.topic_id GROUP BY t.id;
+UPDATE chat_messages SET thread_id = (SELECT th.id FROM tutor_threads th WHERE th.topic_id = chat_messages.topic_id);
+UPDATE chat_messages SET seq = (
+  SELECT COUNT(*) FROM chat_messages m2 WHERE m2.topic_id = chat_messages.topic_id
+    AND (m2.created_at < chat_messages.created_at OR (m2.created_at = chat_messages.created_at AND m2.rowid <= chat_messages.rowid)));
+UPDATE chat_messages SET reply_to = (
+  SELECT m2.id FROM chat_messages m2 WHERE m2.topic_id = chat_messages.topic_id AND m2.role = 'user' AND m2.seq < chat_messages.seq ORDER BY m2.seq DESC LIMIT 1)
+  WHERE role = 'assistant';
+
+ALTER TABLE lessons ADD COLUMN status TEXT NOT NULL DEFAULT 'complete';      -- streaming | complete | interrupted | failed
+ALTER TABLE lessons ADD COLUMN verification TEXT;
+ALTER TABLE lessons ADD COLUMN error TEXT;
+ALTER TABLE lessons ADD COLUMN updated_at TEXT;
+
+-- "Save to notes" is idempotent: each answer is saved into a note at most once.
+CREATE TABLE note_saves (
+  note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  message_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (note_id, message_id)
+);
+
+-- Approved calendar records (shared by Calendar, Planner, Grades and Home).
+ALTER TABLE calendar_events ADD COLUMN all_day INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE calendar_events ADD COLUMN start_time TEXT;                       -- local HH:MM, optional
+ALTER TABLE calendar_events ADD COLUMN category TEXT;
+ALTER TABLE calendar_events ADD COLUMN origin TEXT NOT NULL DEFAULT 'manual'; -- manual | syllabus
+ALTER TABLE calendar_events ADD COLUMN origin_key TEXT;                       -- stable key for re-imports
+ALTER TABLE calendar_events ADD COLUMN source_section_idx INTEGER;
+ALTER TABLE calendar_events ADD COLUMN edited_fields TEXT NOT NULL DEFAULT '[]'; -- fields the student changed by hand
+ALTER TABLE calendar_events ADD COLUMN updated_at TEXT;
+
+-- Syllabus imports are proposals until the student confirms them.
+CREATE TABLE syllabus_imports (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  document_id TEXT REFERENCES documents(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'pending',      -- pending | applied | discarded | superseded
+  notes TEXT NOT NULL DEFAULT '[]',            -- import-level warnings (JSON)
+  created_at TEXT NOT NULL,
+  applied_at TEXT
+);
+CREATE INDEX idx_syllabus_imports_course ON syllabus_imports(course_id, created_at);
+CREATE TABLE syllabus_suggestions (
+  id TEXT PRIMARY KEY,
+  import_id TEXT NOT NULL REFERENCES syllabus_imports(id) ON DELETE CASCADE,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  ord INTEGER NOT NULL DEFAULT 0,
+  action TEXT NOT NULL,                        -- add | update | remove
+  origin_key TEXT NOT NULL,
+  event_id TEXT REFERENCES calendar_events(id) ON DELETE SET NULL,
+  kind TEXT NOT NULL,                          -- exam | assignment | reading | quiz | other
+  title TEXT NOT NULL,
+  date TEXT,                                   -- NULL = not stated or ambiguous
+  start_time TEXT,
+  weight REAL,                                 -- NULL = not stated or ambiguous
+  category TEXT,
+  previous TEXT,                               -- current approved values (JSON) for updates
+  ambiguity TEXT NOT NULL DEFAULT '[]',
+  conflicts TEXT NOT NULL DEFAULT '[]',
+  kept_user_edits TEXT NOT NULL DEFAULT '[]',
+  source_document_id TEXT REFERENCES documents(id) ON DELETE SET NULL,
+  source_section_idx INTEGER,
+  source_label TEXT,
+  source_quote TEXT,
+  include INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX idx_syllabus_suggestions_import ON syllabus_suggestions(import_id, ord);
+
+-- Grades: categories/policies from the syllabus, assessments, scores and feedback.
+CREATE TABLE grade_categories (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  weight REAL,
+  expected_count INTEGER,                      -- e.g. "4 problem sets", if stated
+  created_at TEXT NOT NULL
+);
+CREATE TABLE course_policies (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                          -- drop_lowest | curve | bonus | late | other
+  text TEXT NOT NULL,
+  source_document_id TEXT REFERENCES documents(id) ON DELETE SET NULL,
+  source_label TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE assessments (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  event_id TEXT UNIQUE REFERENCES calendar_events(id) ON DELETE SET NULL,
+  category_id TEXT REFERENCES grade_categories(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  weight REAL,                                 -- % of the final grade; NULL = share of its category
+  points_possible REAL NOT NULL DEFAULT 100,
+  points_earned REAL,                          -- NULL = not graded yet
+  excused INTEGER NOT NULL DEFAULT 0,
+  what_if REAL,                                -- hypothetical % for planning, never a real score
+  feedback TEXT,
+  feedback_source TEXT,                        -- provenance (JSON)
+  score_source TEXT NOT NULL DEFAULT 'manual', -- manual | confirmed_extraction
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_assessments_course ON assessments(course_id);
+CREATE TABLE grade_proposals (
+  id TEXT PRIMARY KEY,
+  assessment_id TEXT NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+  document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+  points_earned REAL,
+  points_possible REAL,
+  feedback TEXT,
+  source_label TEXT,
+  source_quote TEXT,
+  uncertain INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',      -- pending | accepted | rejected
+  created_at TEXT NOT NULL
+);
+CREATE TABLE study_suggestions (
+  id TEXT PRIMARY KEY,
+  assessment_id TEXT NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  model TEXT,
+  created_at TEXT NOT NULL
+);
+
+ALTER TABLE documents ADD COLUMN partial INTEGER NOT NULL DEFAULT 0;         -- some pages/slides had no readable text
+ALTER TABLE documents ADD COLUMN mime TEXT;
+ALTER TABLE documents ADD COLUMN assessment_id TEXT REFERENCES assessments(id) ON DELETE SET NULL;
+
+-- Existing approved events: mark their origin and give syllabus ones a stable key.
+UPDATE calendar_events SET origin = CASE WHEN source_document_id IS NOT NULL THEN 'syllabus' ELSE 'manual' END, updated_at = created_at;
+UPDATE calendar_events SET origin_key = 'legacy|' || kind || '|' || lower(trim(title)) || '|' || date || '|' || id
+  WHERE confirmed = 1 AND origin = 'syllabus';
+-- Existing unconfirmed detections become a pending syllabus review (nothing is lost).
+INSERT INTO syllabus_imports (id, course_id, document_id, status, notes, created_at)
+  SELECT lower(hex(randomblob(16))), course_id, MAX(source_document_id), 'pending', '["Moved from the previous version of LectureLab."]', MIN(created_at)
+  FROM calendar_events WHERE confirmed = 0 GROUP BY course_id;
+INSERT INTO syllabus_suggestions (id, import_id, course_id, ord, action, origin_key, kind, title, date, weight, source_document_id, source_quote)
+  SELECT lower(hex(randomblob(16))), (SELECT i.id FROM syllabus_imports i WHERE i.course_id = e.course_id AND i.status = 'pending' ORDER BY i.created_at DESC LIMIT 1),
+         e.course_id, 0, 'add', e.kind || '|' || lower(trim(e.title)) || '|' || e.date, e.kind, e.title, e.date, e.weight, e.source_document_id, e.source_text
+  FROM calendar_events e WHERE e.confirmed = 0;
+DELETE FROM calendar_events WHERE confirmed = 0;
+`,
+  },
+  {
+    id: 6,
+    sql: `
+-- Study activity: local AI usage metadata only (no prompts, answers, course
+-- names or file contents). One row per model run.
+CREATE TABLE usage_events (
+  id TEXT PRIMARY KEY,
+  run_key TEXT NOT NULL UNIQUE,                -- one row per run, even if reported twice
+  day TEXT NOT NULL,                           -- local date (YYYY-MM-DD)
+  created_at TEXT NOT NULL,
+  task TEXT NOT NULL,                          -- tutor | lesson | quiz | notes | other …
+  reply_id TEXT,                               -- tutor message id, so a retried answer counts as one reply
+  completed INTEGER NOT NULL DEFAULT 0,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  local_only INTEGER NOT NULL,                 -- 1 = verified loopback (on this computer)
+  input_tokens INTEGER,                        -- NULL = the runtime didn't report it
+  output_tokens INTEGER,
+  duration_ms INTEGER,
+  first_text_ms INTEGER,
+  output_tokens_per_s REAL
+);
+CREATE INDEX idx_usage_day ON usage_events(day);
+`,
+  },
 ];

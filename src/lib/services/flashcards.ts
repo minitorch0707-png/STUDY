@@ -104,7 +104,7 @@ export function generateDeck(topicId: string, count = 12) {
       const existing = deckCards(deckId);
       const prompt = flashcardPrompt(block, topic.title, count, existing.slice(-30).map((c) => c.front));
       const started = Date.now();
-      const res = await generateJson(cardsSchema, { messages: [{ role: "system", content: TUTOR_SYSTEM }, { role: "user", content: prompt }], temperature: 0.4 });
+      const res = await generateJson(cardsSchema, { messages: [{ role: "system", content: TUTOR_SYSTEM }, { role: "user", content: prompt }], temperature: 0.4, usage: { task: "flashcards" } });
       logGeneration({ task: "flashcards", model: getLLM().model, prompt, output: JSON.stringify(res), durationMs: Date.now() - started, refId: deckId });
       const fps = existing.map((c) => fingerprint(c.front));
       let added = 0;

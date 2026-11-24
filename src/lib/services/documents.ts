@@ -15,6 +15,7 @@ import { runInBackground } from "./generations";
 import { extractTopicsForDocument } from "./topics";
 import { touchCourse } from "./courses";
 import { logEvent } from "@/lib/logs";
+import { markInterruptedGenerations } from "./tutor";
 
 export const PARSER_VERSION = 1;
 
@@ -365,4 +366,7 @@ export function resumeInterruptedJobs() {
   for (const s of stuck) runInBackground("resume-ingest", () => processDocument(s.id));
   db().prepare("UPDATE quizzes SET status = 'failed', status_detail = 'Interrupted by a restart — please generate again.' WHERE status = 'generating'").run();
   db().prepare("UPDATE decks SET status = 'failed', status_detail = 'Interrupted by a restart — please generate again.' WHERE status = 'generating'").run();
+  // Tutor answers and lessons that were being written when the app closed keep their
+  // last checkpoint and show "Interrupted · Retry".
+  markInterruptedGenerations();
 }

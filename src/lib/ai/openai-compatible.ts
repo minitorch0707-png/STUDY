@@ -44,6 +44,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     return {
       model: req.model ?? this.opts.model,
       stream,
+      ...(stream ? { stream_options: { include_usage: true } } : {}),
       temperature: req.temperature ?? this.opts.temperature,
       ...(req.maxTokens ? { max_tokens: req.maxTokens } : {}),
       messages: req.messages.map((m) =>
@@ -71,6 +72,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       choices: { message: { content: string } }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    req.onUsage?.({ inputTokens: json.usage?.prompt_tokens, outputTokens: json.usage?.completion_tokens });
     return {
       text: stripThinking(json.choices?.[0]?.message?.content ?? ""),
       model: json.model ?? this.opts.model,
@@ -95,7 +97,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
         const data = line.replace(/^data:\s*/, "").trim();
         if (!data || data === "[DONE]") continue;
         try {
-          const piece = JSON.parse(data).choices?.[0]?.delta?.content;
+          const parsed = JSON.parse(data);
+          if (parsed.usage) req.onUsage?.({ inputTokens: parsed.usage.prompt_tokens, outputTokens: parsed.usage.completion_tokens });
+          const piece = parsed.choices?.[0]?.delta?.content;
           if (piece) yield piece as string;
         } catch {
           /* partial line */

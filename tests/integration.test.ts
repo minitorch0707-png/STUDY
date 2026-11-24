@@ -17,6 +17,9 @@ function lastUser(req: ChatRequest) {
   return req.messages.filter((m) => m.role === "user").at(-1)!.content;
 }
 
+const DEFAULT_PIECES = ["## In a nutshell\nMens rea is the guilty mind [S1].\n", "**Beyond your materials:** Many systems use similar ideas."];
+const streamPlan = { pieces: DEFAULT_PIECES, delayMs: 0, hangAfter: null as number | null, emitted: 0, kill: () => {}, reportUsage: true };
+
 const fakeLLM: LLMProvider & { calls: string[] } = {
   name: "scripted",
   model: "scripted-test-model",
@@ -47,11 +50,21 @@ const fakeLLM: LLMProvider & { calls: string[] } = {
     } else if (p.includes("knowledge checks")) {
       out = { checks: [{ question: "Mens rea means?", options: ["Guilty mind", "Guilty act", "Defence", "Sentence"], correctIndex: 0, explanation: "[S1]" }] };
     } else out = {};
+    req.onUsage?.({ inputTokens: 500, outputTokens: 40, outputDurationMs: 4000 });
     return { text: JSON.stringify(out), model: this.model, outputTokens: 10, durationMs: 1 };
   },
-  async *stream() {
-    yield "## In a nutshell\nMens rea is the guilty mind [S1].\n";
-    yield "**Beyond your materials:** Many systems use similar ideas.";
+  async *stream(req) {
+    // Controlled by `streamPlan` so tests can pause a generation mid-answer.
+    for (const piece of streamPlan.pieces) {
+      if (streamPlan.hangAfter !== null && streamPlan.emitted >= streamPlan.hangAfter) {
+        // Simulates the app quitting mid-answer; the test "kills" it with streamPlan.kill().
+        await new Promise((_, reject) => (streamPlan.kill = () => reject(new Error("process exited"))));
+      }
+      streamPlan.emitted++;
+      await new Promise((r) => setTimeout(r, streamPlan.delayMs));
+      yield piece;
+    }
+    if (streamPlan.reportUsage) req.onUsage?.({ inputTokens: 900, outputTokens: 60, outputDurationMs: 8000 });
   },
 };
 
@@ -148,12 +161,31 @@ describe("full learning flow", () => {
     expect(block).toContain('<source id="S1"');
   });
 
-  it("streams and caches a lesson with source references", async () => {
-    const events = [];
-    for await (const ev of m.tutor.streamLesson(topicId)) events.push(ev);
-    expect(events[0].type).toBe("sources");
-    expect(events.at(-1)!.type).toBe("done");
+  it("writes the lesson in the background; a viewer can leave and re-attach mid-stream", async () => {
+    Object.assign(streamPlan, { pieces: ["## In a nutshell\n", "Mens rea is the guilty mind [S1].\n", "**Beyond your materials:** Many systems use similar ideas."], delayMs: 60, emitted: 0 });
+    const lessonId = m.tutor.startLesson(topicId);
+    // First viewer reads a little, then "leaves the page".
+    const first = m.tutor.followLesson(lessonId, 0);
+    const seen: string[] = [];
+    for await (const ev of first) {
+      if (ev.type === "text") seen.push(ev.text);
+      if (seen.length === 1) break;
+    }
+    expect(m.tutor.startLesson(topicId)).toBe(lessonId); // revisiting doesn't start a second lesson
+    // Second viewer re-attaches from where the first left off and gets the rest exactly once.
+    const offset = seen.join("").length;
+    let rest = "";
+    const events: string[] = [];
+    for await (const ev of m.tutor.followLesson(lessonId, offset)) {
+      events.push(ev.type);
+      if (ev.type === "text") rest += ev.text;
+    }
+    expect(events.at(-1)).toBe("done");
+    expect(seen.join("") + rest).toBe(streamPlan.pieces.join(""));
+    Object.assign(streamPlan, { pieces: DEFAULT_PIECES, delayMs: 0 });
     const lesson = m.tutor.getLesson(topicId)!;
+    expect(lesson.status).toBe("complete");
+    expect(lesson.verification).toMatchObject({ cited: [1], invalid: [] });
     expect(lesson.content).toContain("[S1]");
     expect(lesson.sources.length).toBeGreaterThan(0);
     const checks = await m.tutor.lessonChecks(topicId);
@@ -163,18 +195,53 @@ describe("full learning flow", () => {
   it("adapts teaching after repeated wrong answers", async () => {
     m.tutor.answerCheck(topicId, false);
     m.tutor.answerCheck(topicId, false);
+    const { assistantMessageId } = m.tutor.sendTutorMessage({ topicId, action: "simpler", clientId: "c-simpler" });
     const evs = [];
-    for await (const ev of m.tutor.streamTutorReply({ topicId, action: "simpler" })) evs.push(ev);
-    expect(evs.find((e) => e.type === "meta")).toMatchObject({ adaptive: true });
+    for await (const ev of m.tutor.followMessage(assistantMessageId, 0)) evs.push(ev);
+    expect(evs.find((e) => e.type === "meta" && "adaptive" in e)).toMatchObject({ adaptive: true });
+    expect(m.tutor.getMessage(assistantMessageId)!.status).toBe("complete");
+  });
+
+  it("survives a restart mid-answer: draft, partial text, sources, interrupted state, retry without duplicates", async () => {
+    m.tutor.updateThread(topicId, { draft: "and what about wilful blindness?" });
+    Object.assign(streamPlan, { pieces: ["Recklessness means ", "being aware of a risk [S1]", " and taking it anyway."], delayMs: 10, hangAfter: 2, emitted: 0 });
+    const sent = m.tutor.sendTutorMessage({ topicId, message: "Explain recklessness", clientId: "c-reckless" });
+    m.tutor.updateThread(topicId, { draft: "and what about wilful blindness?" });
+    await until(() => (m.tutor.getMessage(sent.assistantMessageId)!.content.length > 20 ? true : null), 3000); // checkpointed to disk
+    // Simulate the app quitting: the in-memory generation is gone; restart marks it interrupted.
+    (globalThis as { __llLive?: Map<string, unknown> }).__llLive!.clear();
+    streamPlan.kill(); // the old process's generation ends; it must not touch the database any more
+    await new Promise((r) => setTimeout(r, 50));
+    m.tutor.markInterruptedGenerations();
+    const after = m.tutor.getMessage(sent.assistantMessageId)!;
+    expect(after.status).toBe("interrupted");
+    expect(after.content).toBe("Recklessness means being aware of a risk [S1]"); // last checkpoint kept
+    expect(after.sources.length).toBeGreaterThan(0);
+    expect(m.tutor.getThread(topicId)!.draft).toBe("and what about wilful blindness?");
+    expect(m.tutor.getThread(topicId)!.resume_message_id).toBe(sent.assistantMessageId);
+    expect(m.tutor.resumeTarget()!.topic_id).toBe(topicId);
+
+    // Sending again with the same client id (e.g. a double click or a network retry) creates nothing new.
+    const before = m.tutor.getChat(topicId).length;
+    const again = m.tutor.sendTutorMessage({ topicId, message: "Explain recklessness", clientId: "c-reckless" });
+    expect(again).toMatchObject({ duplicate: true, assistantMessageId: sent.assistantMessageId });
+    // Retry finishes the same message in place.
+    Object.assign(streamPlan, { hangAfter: null, emitted: 0, delayMs: 0 });
+    expect(m.tutor.retryAnswer(sent.assistantMessageId)).toBe(true);
+    await until(() => (m.tutor.getMessage(sent.assistantMessageId)!.status === "complete" ? true : null));
+    expect(m.tutor.getChat(topicId).length).toBe(before);
+    expect(m.tutor.getMessage(sent.assistantMessageId)!.content).toBe("Recklessness means being aware of a risk [S1] and taking it anyway.");
+    Object.assign(streamPlan, { pieces: DEFAULT_PIECES });
   });
 
   it("turns the tutor conversation into notes, keeping the student's edits", async () => {
     const chat = m.tutor.getChat(topicId);
-    const answer = chat.find((c) => c.role === "assistant")!;
-    // One-click save works without AI and makes citations readable.
-    m.notes.saveMessageToNotes(topicId, answer.id);
+    const answer = chat.find((c) => c.role === "assistant" && c.status === "complete")!;
+    // One-click save works without AI, makes citations readable, and is idempotent.
+    expect(m.notes.saveMessageToNotes(topicId, answer.id).alreadySaved).toBe(false);
+    expect(m.notes.saveMessageToNotes(topicId, answer.id).alreadySaved).toBe(true);
     let { note } = m.notes.topicNote(topicId);
-    expect(note!.content).toContain("### Saved:");
+    expect(note!.content.match(/### Saved:/g)).toHaveLength(1);
     expect(note!.content).not.toMatch(/\[S\d\]/);
     // The student edits their notes; the automatic update must be told to keep that.
     m.notes.updateNote(note!.id, { content: note!.content + "\nMY OWN MNEMONIC: aware = reckless" });
@@ -246,6 +313,37 @@ describe("full learning flow", () => {
     const report = m.progress.progressReport(courseId);
     expect(report.scores).toHaveLength(1);
     expect(report.flashcards.total).toBe(2);
+  });
+
+  it("records Study activity (metadata only), counts a retried answer once, and keeps totals after a restart", async () => {
+    const act = await import("@/lib/services/activity");
+    const r = act.activityReport("7d");
+    expect(r.runs).toBeGreaterThan(5);
+    expect(r.tokensProcessed).toBeGreaterThan(0);
+    expect(r.allLocal).toBe(true);
+    // The restart test's answer was retried; it still counts as exactly one completed reply.
+    const replies = m.db.db().prepare("SELECT COUNT(*) n FROM usage_events WHERE task='tutor' AND completed=1").get() as { n: number };
+    expect(r.completedReplies).toBeLessThanOrEqual(replies.n);
+    expect(r.completedReplies).toBe(new Set((m.db.db().prepare("SELECT reply_id FROM usage_events WHERE task='tutor' AND completed=1").all() as { reply_id: string }[]).map((x) => x.reply_id)).size);
+    // No content is stored: the table has no text columns for prompts or answers.
+    const cols = (m.db.db().prepare("PRAGMA table_info(usage_events)").all() as { name: string }[]).map((c) => c.name);
+    expect(cols.some((c) => /prompt|answer|content|course|file/.test(c))).toBe(false);
+
+    // A run whose runtime reports no counts is shown as "missing", not silently as zero.
+    streamPlan.reportUsage = false;
+    const sent = m.tutor.sendTutorMessage({ topicId, message: "One more question", clientId: "c-nocount" });
+    await until(() => (m.tutor.getMessage(sent.assistantMessageId)!.status === "complete" ? true : null));
+    streamPlan.reportUsage = true;
+    const r2 = act.activityReport("7d");
+    expect(r2.runsMissingCounts).toBe(r.runsMissingCounts + 1);
+    expect(r2.tokensProcessed).toBe(r.tokensProcessed);
+
+    // "Restart": a fresh database connection to the same file sees the same totals.
+    const file = path.join(tmp, "lecturelab.db");
+    const original = m.db.db();
+    m.db.setDatabaseForTests(m.db.openDatabase(file));
+    expect(act.activityReport("7d")).toEqual(r2);
+    m.db.setDatabaseForTests(original);
   });
 
   it("deleting a course removes its files and data", () => {

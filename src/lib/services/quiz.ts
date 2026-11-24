@@ -151,7 +151,7 @@ async function generateQuestions(quizId: string, config: QuizConfig, focus?: { t
       const started = Date.now();
       let res;
       try {
-        res = await generateJson(questionSchema, { messages: [{ role: "system", content: TUTOR_SYSTEM }, { role: "user", content: prompt }], temperature: 0.6 });
+        res = await generateJson(questionSchema, { messages: [{ role: "system", content: TUTOR_SYSTEM }, { role: "user", content: prompt }], temperature: 0.6, usage: { task: "quiz" } });
       } catch (e) {
         console.warn("question batch failed", e);
         continue;
@@ -326,7 +326,7 @@ export async function gradeResponse(attemptId: string, questionId: string) {
     const { block } = formatSources(src);
     const prompt = gradePrompt({ prompt: q.prompt, modelAnswer: data.modelAnswer ?? "", rubric: data.rubric ?? [] }, text.slice(0, 6000), block);
     const started = Date.now();
-    const res = await generateJson(gradeSchema, { messages: [{ role: "user", content: prompt }], temperature: 0.1 });
+    const res = await generateJson(gradeSchema, { messages: [{ role: "user", content: prompt }], temperature: 0.1, usage: { task: "grading" } });
     logGeneration({ task: "grade", model: getLLM().model, prompt, output: JSON.stringify(res), durationMs: Date.now() - started, refId: questionId });
     const rubric = data.rubric ?? [];
     const verdicts = rubric.map((_, i) => (res.points[i]?.met ?? "no") as RubricVerdict);

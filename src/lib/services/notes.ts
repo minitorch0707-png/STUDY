@@ -109,24 +109,38 @@ export function readableCitations(text: string, sources: SourceRef[]) {
   });
 }
 
-/** One click: append a tutor answer to the topic's notes (no AI needed). */
-export function saveMessageToNotes(topicId: string, messageId: string) {
-  const msg = db().prepare("SELECT content, sources, action, created_at FROM chat_messages WHERE id = ? AND topic_id = ?").get(messageId, topicId) as
-    | { content: string; sources: string; action: string | null; created_at: string }
+/**
+ * One click: append a tutor answer to the topic's notes (no AI needed).
+ * Idempotent: saving the same answer twice changes nothing, and the student's
+ * own edits to the note are never touched (the answer is appended).
+ */
+export function saveMessageToNotes(topicId: string, messageId: string): { note: Note; alreadySaved: boolean } {
+  const msg = db().prepare("SELECT content, sources, status, reply_to FROM chat_messages WHERE id = ? AND topic_id = ? AND role = 'assistant'").get(messageId, topicId) as
+    | { content: string; sources: string; status: string; reply_to: string | null }
     | undefined;
   if (!msg) throw new Error("Message not found");
-  const question = db()
-    .prepare("SELECT content FROM chat_messages WHERE topic_id = ? AND role = 'user' AND created_at <= ? ORDER BY created_at DESC LIMIT 1")
-    .get(topicId, msg.created_at) as { content: string } | undefined;
+  if (msg.status !== "complete") throw new Error("This answer isn't finished yet. Save it once it's complete.");
   const note = ensureAutoNote(topicId);
-  const body = readableCitations(msg.content, parseJson<SourceRef[]>(msg.sources, [])).trim();
-  const block = `\n\n### Saved: ${truncate(question?.content ?? "Tutor answer", 80)}\n\n${body}\n`;
-  return updateNote(note.id, { content: (note.content + block).trim() })!;
+  return db().transaction(() => {
+    const inserted = db().prepare("INSERT OR IGNORE INTO note_saves (note_id, message_id, created_at) VALUES (?,?,?)").run(note.id, messageId, nowIso()).changes;
+    const current = db().prepare("SELECT * FROM notes WHERE id = ?").get(note.id) as Note;
+    if (!inserted) return { note: current, alreadySaved: true };
+    const question = msg.reply_to ? (db().prepare("SELECT content FROM chat_messages WHERE id = ?").get(msg.reply_to) as { content: string } | undefined) : undefined;
+    const body = readableCitations(msg.content, parseJson<SourceRef[]>(msg.sources, [])).trim();
+    const block = `\n\n### Saved: ${truncate(question?.content ?? "Tutor answer", 80)}\n\n${body}\n`;
+    db().prepare("UPDATE notes SET content = ?, updated_at = ? WHERE id = ?").run((current.content + block).trim(), nowIso(), note.id);
+    return { note: db().prepare("SELECT * FROM notes WHERE id = ?").get(note.id) as Note, alreadySaved: false };
+  })();
+}
+
+/** Which answers in a topic are already saved to its notes. */
+export function savedMessageIds(topicId: string): string[] {
+  return (db().prepare("SELECT s.message_id FROM note_saves s JOIN notes n ON n.id = s.note_id WHERE n.topic_id = ?").all(topicId) as { message_id: string }[]).map((r) => r.message_id);
 }
 
 function transcriptSince(topicId: string, since: string | null) {
   const msgs = db()
-    .prepare(`SELECT role, content, sources, created_at FROM chat_messages WHERE topic_id = ? ${since ? "AND created_at > ?" : ""} ORDER BY created_at`)
+    .prepare(`SELECT role, content, sources, created_at FROM chat_messages WHERE topic_id = ? AND status = 'complete' ${since ? "AND created_at > ?" : ""} ORDER BY seq, created_at`)
     .all(...(since ? [topicId, since] : [topicId])) as { role: string; content: string; sources: string; created_at: string }[];
   return {
     msgs,
@@ -157,7 +171,7 @@ export async function refreshTopicNotes(topicId: string): Promise<Note | null> {
     if (st.reachable && st.chatModel.installed) {
       const prompt = notesPrompt({ topicTitle: topic.title, existing: note.content, transcript: text.slice(-14_000) || "(no conversation yet)", lesson: lessonText });
       const started = Date.now();
-      const res = await getLLM().chat({ messages: [{ role: "user", content: prompt }], temperature: 0.2, think: false, maxTokens: 1400 });
+      const res = await getLLM().chat({ messages: [{ role: "user", content: prompt }], temperature: 0.2, think: false, maxTokens: 1400, usage: { task: "notes" } });
       content = res.text.replace(/^```(?:markdown|md)?\s*/i, "").replace(/```\s*$/, "").trim();
       logGeneration({ task: "notes", model: res.model, prompt, output: content, durationMs: Date.now() - started, refId: note.id });
       if (content.length < 40) throw new Error("The AI returned empty notes");

@@ -12,8 +12,27 @@ export interface ChatMessage {
   images?: string[];
 }
 
+/** Token counts and timings reported by the inference runtime (any field may be missing). */
+export interface RuntimeUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  /** Time the runtime spent generating output (excludes model loading). */
+  outputDurationMs?: number;
+}
+
+/** Labels a run for the Study activity panel. */
+export interface UsageLabel {
+  task: string;
+  /** The tutor message this run answers (a retried answer still counts as one reply). */
+  replyId?: string;
+}
+
 export interface ChatRequest {
   messages: ChatMessage[];
+  /** Called by the provider when the runtime reports token counts. */
+  onUsage?: (u: RuntimeUsage) => void;
+  /** What this run is for (Study activity). Unlabelled runs are counted as "other". */
+  usage?: UsageLabel;
   /** JSON schema the answer must follow (structured output). */
   jsonSchema?: Record<string, unknown>;
   temperature?: number;
