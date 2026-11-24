@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { FileText, Lightbulb } from "lucide-react";
 import { Badge, cn } from "./ui";
 import { courseColor } from "@/lib/colors";
+import { markUncertain } from "@/lib/learning/citations";
 
 export interface SourceRef {
   n: number;
@@ -32,10 +33,11 @@ export const sourceHref = (s: { documentId: string; sectionIdx: number }) => `/d
  * slide/page; "Beyond your materials" paragraphs are visually separated so
  * students always know what came from their course.
  */
-export function Markdown({ text, sources = [], onCite }: { text: string; sources?: SourceRef[]; onCite?: (s: SourceRef) => void }) {
+export function Markdown({ text, sources = [], onCite, verify }: { text: string; sources?: SourceRef[]; onCite?: (s: SourceRef) => void; verify?: boolean }) {
   const byN = new Map(sources.map((s) => [s.n, s]));
   // Turn [S1], [S1, S2] and [S1][S2] into links the renderer can style.
-  const prepared = text.replace(/\[(S\d+(?:\s*,\s*S?\d+)*)\]/g, (_, inner: string) =>
+  // With `verify`, substantial claims that cite nothing get an "unverified" marker.
+  const prepared = (verify ? markUncertain(text) : text).replace(/\[(S\d+(?:\s*,\s*S?\d+)*)\]/g, (_, inner: string) =>
     inner
       .split(/\s*,\s*/)
       .map((p) => `[${p.replace(/^S?/, "S")}](#cite-${p.replace(/^S?/, "")})`)
@@ -47,10 +49,22 @@ export function Markdown({ text, sources = [], onCite }: { text: string; sources
         remarkPlugins={[remarkGfm]}
         components={{
           a({ href, children }) {
+            if (href === "#uncertain")
+              return (
+                <span className="uncertain ml-1 inline-flex -translate-y-px items-center rounded-md border border-dashed border-warning/60 px-1.5 text-[11px] font-medium text-warning" title="No course source is cited for this — double-check it.">
+                  <span aria-hidden>?</span>
+                  <span className="sr-only">Unverified: no course source cited</span>
+                </span>
+              );
             const m = /^#cite-(\d+)$/.exec(href ?? "");
             if (m) {
               const s = byN.get(Number(m[1]));
-              if (!s) return <span className="text-xs text-muted">[{children}]</span>;
+              if (!s)
+                return (
+                  <span className="text-xs text-warning line-through decoration-dotted" title="This citation doesn't match any source the tutor was given.">
+                    [{children}]<span className="sr-only"> (unverified citation)</span>
+                  </span>
+                );
               return (
                 <button
                   type="button"

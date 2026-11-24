@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Cpu, Download, Gauge, HardDrive, KeyRound, Loader2, Palette, RefreshCw, Shield, Trash2, XCircle, MonitorPlay as Youtube } from "lucide-react";
 import { Badge, Button, Card, CardHeader, ErrorNote, Field, InfoNote, Input, PageHeader, ProgressBar, Select, Skeleton, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/shell";
+import { Margin, useMarginVisible } from "@/components/margin";
 import { LicenseForm, useLicense } from "@/components/pro";
 import { Copy, LifeBuoy, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -505,6 +506,7 @@ export default function SettingsPage() {
               <ThemeToggle />
             </div>
           </Card>
+          <MarginSetting />
         </section>
 
         <section id="models">
@@ -562,5 +564,21 @@ export default function SettingsPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function MarginSetting() {
+  const [visible, setVisible] = useMarginVisible();
+  return (
+    <Card className="mt-3 flex items-center justify-between gap-4 p-5">
+      <div className="flex items-center gap-3">
+        <Margin state="ready" size={28} />
+        <div>
+          <div className="text-sm font-medium">Show Margin</div>
+          <div className="text-xs text-muted">The little bookmark next to the tutor status. The status text always stays.</div>
+        </div>
+      </div>
+      <input type="checkbox" role="switch" aria-label="Show Margin" checked={visible} onChange={(e) => setVisible(e.target.checked)} className="size-5 accent-[var(--primary)]" />
+    </Card>
   );
 }
