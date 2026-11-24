@@ -43,8 +43,8 @@ const NAV_GROUPS: { label: string; items: { href: string; label: string; icon: S
   {
     label: "Plan",
     items: [
-      { href: "/calendar", label: "Calendar", icon: "calendar" },
-      { href: "/grades", label: "Grades", icon: "grades" },
+      // Calendar opens the study planner until the full Calendar and Grades pages land.
+      { href: "/planner", label: "Calendar", icon: "calendar" },
       { href: "/progress", label: "Progress", icon: "grades" },
       { href: "/settings", label: "Settings", icon: "settings" },
     ],
